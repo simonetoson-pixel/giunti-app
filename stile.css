@@ -119,6 +119,11 @@ body { display: flex; flex-direction: column; }
 .linea-scelta .testo { flex: 1; min-width: 0; }
 .linea-scelta .nome { font-size: 17px; font-weight: 600; }
 .linea-scelta .dettaglio { font-size: 13px; color: var(--tenue); }
+.linea-scelta.mancante .nome { color: var(--allarme); }
+.linea-scelta.mancante .bottone-chiaro {
+  background: var(--accento); color: #fff; border-color: var(--accento); font-weight: 600;
+}
+
 .bottone-chiaro {
   font: inherit; font-size: 14px; padding: 9px 15px; border-radius: 10px;
   border: 1px solid var(--linea); background: var(--carta); color: var(--inchiostro);

@@ -111,13 +111,18 @@ async function fotoScattata(file, aggiuntiva) {
 
 // ------------------------------------------------------------- rilievo
 function nuovoRilievo(primaFoto) {
-  const linea = proposta ? proposta.linea : linee[0];
+  // Senza posizione non si tira a indovinare: meglio costringere a scegliere
+  // che attribuire la foto a un giunto sbagliato. Vale anche quando il GPS
+  // c'è ma la linea più vicina è troppo lontana per essere quella giusta.
+  const fidato = proposta &&
+    affidabilita(proposta.distanza, posizione && posizione.precisione) !== 'incerta';
+  const linea = fidato ? proposta.linea : null;
   rilievo = {
-    linea_id: linea.id,
+    linea_id: linea ? linea.id : null,
     linea,
     data: new Date().toISOString().slice(0, 10),
     colore: null,
-    stati: statiIniziali(linea),
+    stati: linea ? statiIniziali(linea) : [],
     nota: '',
     audio: null,
     foto: [primaFoto],
@@ -139,6 +144,22 @@ function statiIniziali(linea) {
 
 function disegnaRilievo() {
   const l = rilievo.linea;
+
+  // Finché non si sa a quale giunto appartiene, non si può salvare.
+  $('b-salva').disabled = !l;
+  $('b-salva').textContent = l ? 'SALVA RILIEVO' : 'SCEGLI PRIMA LA LINEA';
+  document.querySelector('.linea-scelta').classList.toggle('mancante', !l);
+
+  if (!l) {
+    $('r-opera').textContent = 'Nessuna linea scelta';
+    $('r-dettaglio').textContent = posizione
+      ? 'Nessun giunto abbastanza vicino: scegli tu quale'
+      : 'Posizione non disponibile: scegli tu la linea';
+    $('colori').innerHTML = '';
+    $('corsie').innerHTML = '';
+    return;
+  }
+
   $('r-opera').textContent = l.opera || 'Opera non indicata';
   const dist = proposta && proposta.linea.id === l.id
     ? ` · ${distanzaLeggibile(proposta.distanza)}` : '';
@@ -313,14 +334,14 @@ function collega() {
 
   $('colori').addEventListener('click', e => {
     const b = e.target.closest('.colore');
-    if (!b) return;
+    if (!b || !rilievo.linea) return;
     rilievo.colore = rilievo.colore === b.dataset.stato ? null : b.dataset.stato;
     disegnaRilievo();
   });
 
   $('corsie').addEventListener('click', e => {
     const b = e.target.closest('.corsia');
-    if (!b) return;
+    if (!b || !rilievo.linea) return;
     const c = rilievo.stati[+b.dataset.c].corsie[+b.dataset.i];
     const i = STATI.indexOf(c.stato);
     c.stato = STATI[(i + 1) % STATI.length];
