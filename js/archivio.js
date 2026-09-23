@@ -64,6 +64,16 @@ async function caricaTutto() {
     })),
   }));
 
+  // le posizioni corrette a mano hanno la precedenza su quelle calcolate
+  let corrette = {};
+  try {
+    corrette = Object.fromEntries(
+      (await leggi('posizioni?select=linea_id,lat,lon')).map(p => [p.linea_id, p]));
+  } catch { /* tabella non ancora creata */ }
+  linee.forEach(l => {
+    if (corrette[l.id]) { l.lat = corrette[l.id].lat; l.lon = corrette[l.id].lon; }
+  });
+
   rilievi = await leggi('rilievi?select=id,linea_id,data,colore,nota,audio_path,'
     + 'lat,lon,creato_il,stati_corsie,foto(id,path)&order=data.desc,creato_il.desc');
   const perId = Object.fromEntries(linee.map(l => [l.id, l]));

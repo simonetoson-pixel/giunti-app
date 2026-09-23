@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1B4B6B">
+<title>Giunti — posizioni</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="stile.css">
+<link rel="stylesheet" href="archivio.css">
+<link rel="stylesheet" href="posizioni.css">
+</head>
+<body class="archivio posizioni">
+
+<section class="schermata attiva" id="s-accesso">
+  <div class="accesso">
+    <img src="icona.svg" alt="" class="marchio">
+    <h1>Giunti</h1>
+    <p class="occhiello">Posizione dei giunti sull'ortofoto</p>
+    <form id="modulo-accesso">
+      <input type="email" id="email" placeholder="Email" autocomplete="username" required>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit" class="salva" id="b-entra">ENTRA</button>
+      <p class="errore-accesso" id="errore-accesso" hidden></p>
+    </form>
+  </div>
+</section>
+
+<section class="schermata" id="s-lavoro">
+  <div id="mappa"></div>
+
+  <aside class="pannello-lavoro">
+    <h1>Posizione dei giunti</h1>
+    <p class="spiega">Le coordinate vengono calcolate dalla chilometrica sul
+      grafo, che è una linea sola: cadono sull'asse della strada. Trascina il
+      punto dove il giunto sta davvero e resta lì.</p>
+
+    <div class="gruppo">
+      <label class="et" for="f-strada">Tratta</label>
+      <select id="f-strada"></select>
+    </div>
+
+    <div class="gruppo">
+      <label class="et" for="elenco">Linee di giunto</label>
+      <div class="elenco-linee" id="elenco"></div>
+    </div>
+
+    <div class="stato-lavoro" id="stato"></div>
+  </aside>
+
+  <div class="barra-selezione" id="barra" hidden>
+    <div class="testo">
+      <b id="sel-opera">—</b>
+      <span id="sel-dove"></span>
+    </div>
+    <span class="scarto" id="sel-scarto"></span>
+    <button class="bottone-chiaro" id="b-annulla" type="button">Rimetti al calcolo</button>
+  </div>
+</section>
+
+<div class="avviso" id="avviso"></div>
+<script type="module" src="js/posizioni.js"></script>
+</body>
+</html>

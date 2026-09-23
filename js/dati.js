@@ -48,9 +48,19 @@ async function scarica() {
     + 'corsie(posizione,corsia,stato))&order=strada,km_m');
   const grezze = await r.json();
 
+  // Dove la posizione è stata corretta a mano sull'ortofoto, vale quella: è
+  // più precisa di quella interpolata, e sul campo serve a riconoscere il
+  // giunto giusto quando due sono vicini.
+  let corrette = {};
+  try {
+    const p = await chiama('/rest/v1/posizioni?select=linea_id,lat,lon');
+    corrette = Object.fromEntries((await p.json()).map(x => [x.linea_id, x]));
+  } catch { /* la tabella può non esserci ancora: si usano quelle calcolate */ }
+
   return grezze.map(l => ({
     id: l.id, strada: l.strada, km: l.km, km_m: l.km_m, opera: l.opera,
-    lat: l.lat, lon: l.lon,
+    lat: (corrette[l.id] || l).lat, lon: (corrette[l.id] || l).lon,
+    posizione_corretta: !!corrette[l.id],
     carreggiate: (l.giunti || [])
       .sort((a, b) => a.ordine - b.ordine)
       .map(g => ({
