@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1B4B6B"/>
+  <!-- impalcato visto dall'alto, con la linea di giunto che lo attraversa -->
+  <rect x="96" y="150" width="320" height="212" rx="10" fill="#3E7392"/>
+  <rect x="96" y="150" width="320" height="30" fill="#2A5B78"/>
+  <rect x="96" y="332" width="320" height="30" fill="#2A5B78"/>
+  <g fill="#F2F1EA">
+    <rect x="240" y="150" width="32" height="212"/>
+  </g>
+  <g fill="#1B4B6B">
+    <rect x="248" y="158" width="16" height="22"/>
+    <rect x="248" y="196" width="16" height="22"/>
+    <rect x="248" y="234" width="16" height="22"/>
+    <rect x="248" y="272" width="16" height="22"/>
+    <rect x="248" y="310" width="16" height="22"/>
+  </g>
+  <circle cx="380" cy="404" r="40" fill="#FFC000" stroke="#1B4B6B" stroke-width="10"/>
+</svg>

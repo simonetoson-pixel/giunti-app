@@ -1,0 +1,14 @@
+{
+  "name": "Giunti — rilievo",
+  "short_name": "Giunti",
+  "description": "Rilievo dei giunti di dilatazione sulle tratte in gestione",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F1EA",
+  "theme_color": "#1B4B6B",
+  "lang": "it",
+  "icons": [
+    { "src": "icona.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

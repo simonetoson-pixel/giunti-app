@@ -1,0 +1,238 @@
+/* Giunti — app di rilievo.
+   Pensata per essere usata in piedi accanto alla carreggiata: bersagli grandi,
+   contrasto alto, niente che richieda precisione col dito. */
+
+:root {
+  --ottime: #92D050;
+  --buone_datate: #00B050;
+  --attenzionare: #FFC000;
+  --cattive: #FF5050;
+  --nessuno: #C9C6BA;
+
+  --sfondo: #F2F1EA;
+  --carta: #FFFFFF;
+  --inchiostro: #1D2422;
+  --tenue: #5C6560;
+  --linea: #CBC8BB;
+  --accento: #1B4B6B;
+  --accento-chiaro: #E4ECF1;
+
+  --sicuro: #2E7D4E;
+  --allarme: #B3392C;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--sfondo); color: var(--inchiostro);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+body { display: flex; flex-direction: column; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------- schermate */
+.schermata { display: none; flex-direction: column; flex: 1; min-height: 0; }
+.schermata.attiva { display: flex; }
+
+/* ------------------------------------------------------- striscia in alto */
+.posizione {
+  background: var(--accento); color: #fff;
+  padding: 10px 16px calc(10px + env(safe-area-inset-top)) 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  display: flex; flex-direction: column; gap: 2px;
+}
+.posizione .dove { font-size: 19px; font-weight: 600; }
+.posizione .opera { font-size: 13px; opacity: .92; }
+.posizione .segnale {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .07em; opacity: .8;
+}
+.posizione.cercando { background: #5C6560; }
+.posizione.incerta { background: #8A6D1F; }
+
+/* ---------------------------------------------------------------- scatto */
+.centro {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px; padding: 24px;
+}
+.scatta {
+  width: 190px; height: 190px; border-radius: 50%; border: none;
+  background: radial-gradient(circle at 32% 28%, #235c80, #12334a);
+  color: #fff; font-size: 19px; font-weight: 700; letter-spacing: .04em;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28), inset 0 0 0 7px rgba(255,255,255,.1);
+  cursor: pointer;
+}
+.scatta:active { transform: scale(.97); }
+.scatta svg { width: 44px; height: 44px; }
+.suggerimento { color: var(--tenue); font-size: 13.5px; text-align: center; max-width: 24ch; }
+
+/* ------------------------------------------------------------- piè pagina */
+.fondo {
+  border-top: 1px solid var(--linea); background: var(--carta);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+}
+.coda {
+  display: flex; align-items: center; gap: 10px; font-size: 13.5px;
+  color: var(--tenue); margin-bottom: 8px;
+}
+.coda b { color: var(--inchiostro); }
+.coda button {
+  margin-left: auto; font: inherit; font-size: 13px; padding: 5px 12px;
+  border: 1px solid var(--linea); background: var(--sfondo);
+  border-radius: 16px; color: var(--inchiostro);
+}
+.recenti { display: flex; flex-direction: column; gap: 7px; }
+.recente { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.recente .nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recente .quando { color: var(--tenue); font-size: 11.5px; }
+.pallino { width: 11px; height: 11px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.2); }
+
+/* ---------------------------------------------------------------- rilievo */
+.foto-wrap { position: relative; background: #111; flex: none; }
+.foto-wrap img { width: 100%; max-height: 38vh; object-fit: cover; display: block; }
+.chiudi {
+  position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px;
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 20px;
+}
+.aggiungi-foto {
+  position: absolute; bottom: 10px; right: 10px;
+  border: none; border-radius: 20px; padding: 8px 14px;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 13px;
+}
+.conta-foto {
+  position: absolute; bottom: 10px; left: 10px;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 12px;
+  padding: 5px 10px; border-radius: 14px;
+}
+
+.corpo { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
+.blocco { padding: 14px 0; border-bottom: 1px solid var(--linea); }
+.blocco:last-of-type { border-bottom: none; }
+.etichetta {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--tenue); margin-bottom: 8px;
+}
+.linea-scelta { display: flex; align-items: center; gap: 12px; }
+.linea-scelta .testo { flex: 1; min-width: 0; }
+.linea-scelta .nome { font-size: 17px; font-weight: 600; }
+.linea-scelta .dettaglio { font-size: 13px; color: var(--tenue); }
+.bottone-chiaro {
+  font: inherit; font-size: 14px; padding: 9px 15px; border-radius: 10px;
+  border: 1px solid var(--linea); background: var(--carta); color: var(--inchiostro);
+}
+
+/* giudizio d'insieme */
+.colori { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.colore {
+  border: 2px solid var(--linea); background: var(--carta); border-radius: 12px;
+  padding: 12px 4px 9px; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 600; color: var(--tenue); line-height: 1.2; text-align: center;
+}
+.colore .macchia { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); }
+.colore.scelto { border-color: var(--inchiostro); background: var(--sfondo); color: var(--inchiostro); }
+
+/* corsie */
+.carreggiata { margin-bottom: 12px; }
+.carreggiata:last-child { margin-bottom: 0; }
+.carreggiata .titolo {
+  font-size: 12px; font-weight: 600; color: var(--tenue); margin-bottom: 5px;
+  display: flex; gap: 8px; align-items: baseline;
+}
+.carreggiata .titolo span { font-weight: 400; font-size: 11.5px; }
+.strisce { display: flex; gap: 4px; }
+.corsia {
+  flex: 1; height: 54px; border-radius: 8px; border: 1px solid rgba(0,0,0,.22);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: rgba(0,0,0,.65);
+}
+.corsia small { font-size: 9px; font-weight: 400; opacity: .75; }
+
+/* note */
+.vocale {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 1px solid var(--linea); background: var(--carta);
+  border-radius: 12px; padding: 13px 15px; font: inherit; font-size: 15px;
+  color: var(--inchiostro);
+}
+.vocale.registra { border-color: var(--allarme); color: var(--allarme); background: #FBEDEA; }
+.vocale.pronta { border-color: var(--sicuro); color: var(--sicuro); background: #E7F2EB; }
+.onda { display: flex; gap: 3px; align-items: center; height: 18px; margin-left: auto; }
+.onda i { width: 3px; background: currentColor; border-radius: 2px; animation: onda .9s ease-in-out infinite; }
+.onda i:nth-child(2) { animation-delay: .15s } .onda i:nth-child(3) { animation-delay: .3s }
+.onda i:nth-child(4) { animation-delay: .45s }
+@keyframes onda { 0%,100% { height: 5px } 50% { height: 18px } }
+@media (prefers-reduced-motion: reduce) { .onda i { animation: none; height: 11px } }
+
+textarea {
+  width: 100%; min-height: 76px; resize: vertical; margin-top: 10px;
+  border: 1px solid var(--linea); border-radius: 12px; padding: 11px 13px;
+  font: inherit; font-size: 15px; background: var(--carta); color: var(--inchiostro);
+}
+
+.salva {
+  width: 100%; border: none; border-radius: 12px; padding: 17px;
+  background: var(--accento); color: #fff; font: inherit; font-size: 17px; font-weight: 700;
+}
+.salva:disabled { opacity: .5 }
+
+/* ------------------------------------------------------- scelta della linea */
+.elenco { flex: 1; overflow-y: auto; }
+.voce {
+  width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--linea);
+  background: var(--carta); padding: 14px 16px; font: inherit;
+  display: flex; align-items: center; gap: 12px; color: var(--inchiostro);
+}
+.voce .testo { flex: 1; min-width: 0; }
+.voce .nome { font-weight: 600; font-size: 15.5px; }
+.voce .dettaglio { font-size: 12.5px; color: var(--tenue); }
+.voce .distanza { font-size: 13px; color: var(--tenue); white-space: nowrap; }
+.cerca {
+  width: 100%; border: none; border-bottom: 1px solid var(--linea);
+  padding: 14px 16px; font: inherit; font-size: 16px; background: var(--carta);
+}
+.barra-titolo {
+  background: var(--accento); color: #fff; display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top));
+}
+.barra-titolo button { background: none; border: none; color: #fff; font-size: 22px; padding: 0 4px; }
+.barra-titolo .titolo { font-size: 17px; font-weight: 600; }
+
+/* ---------------------------------------------------------------- accesso */
+.accesso {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+  padding: 32px 26px calc(32px + env(safe-area-inset-bottom));
+  gap: 6px; text-align: center;
+}
+.accesso .marchio { width: 78px; height: 78px; border-radius: 18px; align-self: center; margin-bottom: 14px; }
+.accesso h1 { margin: 0; font-size: 30px; letter-spacing: -.01em; }
+.accesso .occhiello { margin: 0 0 26px; color: var(--tenue); font-size: 14.5px; }
+.accesso form { display: flex; flex-direction: column; gap: 11px; }
+.accesso input {
+  border: 1px solid var(--linea); border-radius: 12px; padding: 15px;
+  font: inherit; font-size: 16px; background: var(--carta); color: var(--inchiostro);
+}
+.accesso input:focus { outline: 2px solid var(--accento); outline-offset: -1px; }
+.errore-accesso {
+  margin: 2px 0 0; color: var(--allarme); font-size: 13.5px; text-align: left;
+}
+.nota-accesso { margin: 22px 0 0; color: var(--tenue); font-size: 12.5px; line-height: 1.5; }
+
+.esci {
+  display: block; margin: 12px auto 0; background: none; border: none;
+  color: var(--tenue); font: inherit; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .07em; padding: 4px 8px;
+}
+
+/* ------------------------------------------------------------------ avvisi */
+.avviso {
+  position: fixed; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+  background: var(--inchiostro); color: #fff; border-radius: 12px;
+  padding: 13px 16px; font-size: 14.5px; opacity: 0; pointer-events: none;
+  transition: opacity .2s; z-index: 50;
+}
+.avviso.visibile { opacity: 1; }
+.avviso.buono { background: var(--sicuro); }
+.avviso.male { background: var(--allarme); }

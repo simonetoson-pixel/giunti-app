@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1B4B6B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Giunti — rilievo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="stile.css">
+</head>
+<body>
+
+<!-- ----------------------------------------------------------- accesso -->
+<section class="schermata attiva" id="s-accesso">
+  <div class="accesso">
+    <img src="icona.svg" alt="" class="marchio">
+    <h1>Giunti</h1>
+    <p class="occhiello">Rilievo dei giunti di dilatazione</p>
+    <form id="modulo-accesso">
+      <input type="email" id="email" placeholder="Email" autocomplete="username"
+             inputmode="email" required>
+      <input type="password" id="password" placeholder="Password"
+             autocomplete="current-password" required>
+      <button type="submit" class="salva" id="b-entra">ENTRA</button>
+      <p class="errore-accesso" id="errore-accesso" hidden></p>
+    </form>
+    <p class="nota-accesso">L'accesso serve una volta sola per dispositivo:
+      poi l'app resta aperta e funziona anche senza rete.</p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ scatto -->
+<section class="schermata" id="s-scatto">
+  <div class="posizione cercando" id="posizione">
+    <span class="dove" id="dove">Cerco la posizione…</span>
+    <span class="opera" id="opera-vicina"></span>
+    <span class="segnale" id="segnale">GPS in attesa</span>
+  </div>
+
+  <div class="centro">
+    <button class="scatta" id="b-scatta" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
+        <circle cx="12" cy="13.5" r="3.4"/>
+      </svg>
+      SCATTA FOTO
+    </button>
+    <p class="suggerimento">Un tocco, poi puoi rimetterti in marcia.<br>Colore e note anche dopo.</p>
+  </div>
+
+  <div class="fondo">
+    <div class="coda" id="coda">
+      <span id="coda-testo">Nessun rilievo in attesa</span>
+      <button type="button" id="b-sincronizza" hidden>Invia ora</button>
+    </div>
+    <div class="recenti" id="recenti"></div>
+    <button type="button" class="esci" id="b-esci">Esci</button>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------- rilievo -->
+<section class="schermata" id="s-rilievo">
+  <div class="foto-wrap">
+    <img id="anteprima" alt="Foto del giunto appena scattata">
+    <button class="chiudi" id="b-annulla" type="button" aria-label="Annulla">&times;</button>
+    <span class="conta-foto" id="conta-foto">1 foto</span>
+    <button class="aggiungi-foto" id="b-aggiungi" type="button">+ foto</button>
+  </div>
+
+  <div class="corpo">
+    <div class="blocco">
+      <div class="etichetta">Linea di giunto</div>
+      <div class="linea-scelta">
+        <div class="testo">
+          <div class="nome" id="r-opera">—</div>
+          <div class="dettaglio" id="r-dettaglio"></div>
+        </div>
+        <button class="bottone-chiaro" id="b-cambia" type="button">Cambia</button>
+      </div>
+    </div>
+
+    <div class="blocco">
+      <div class="etichetta">Giudizio d'insieme</div>
+      <div class="colori" id="colori"></div>
+    </div>
+
+    <div class="blocco">
+      <div class="etichetta">Corsie — tocca per cambiare lo stato</div>
+      <div id="corsie"></div>
+    </div>
+
+    <div class="blocco">
+      <div class="etichetta">Note</div>
+      <button class="vocale" id="b-vocale" type="button">
+        <span id="vocale-testo">Registra nota vocale</span>
+        <span class="onda" id="onda" hidden><i></i><i></i><i></i><i></i></span>
+      </button>
+      <textarea id="nota" placeholder="Nota scritta (facoltativa)…"></textarea>
+    </div>
+
+    <div class="blocco">
+      <button class="salva" id="b-salva" type="button">SALVA RILIEVO</button>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------ scelta linea -->
+<section class="schermata" id="s-scelta">
+  <div class="barra-titolo">
+    <button type="button" id="b-indietro" aria-label="Indietro">&larr;</button>
+    <span class="titolo">Scegli la linea di giunto</span>
+  </div>
+  <input class="cerca" id="cerca" type="search" placeholder="Cerca opera, strada o km…">
+  <div class="elenco" id="elenco"></div>
+</section>
+
+<div class="avviso" id="avviso"></div>
+<input type="file" id="file-foto" accept="image/*" capture="environment" hidden>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
