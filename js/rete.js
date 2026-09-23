@@ -104,6 +104,23 @@ export async function caricaFile(bucket, nome, blob) {
   return nome;
 }
 
+// I contenitori di foto e audio sono privati: per mostrarli serve un
+// collegamento firmato, valido a tempo e solo per chi ha la sessione.
+export async function urlFirmato(bucket, percorso, secondi = 3600) {
+  const { supabase_url } = await configurazione();
+  const r = await chiama(`/storage/v1/object/sign/${bucket}/${percorso}`, {
+    method: 'POST',
+    body: JSON.stringify({ expiresIn: secondi }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const { signedURL } = await r.json();
+  return `${supabase_url}/storage/v1${signedURL}`;
+}
+
+export async function leggi(percorso) {
+  return (await chiama(`/rest/v1/${percorso}`)).json();
+}
+
 export async function inserisci(tabella, riga) {
   const r = await chiama(`/rest/v1/${tabella}`, {
     method: 'POST', body: JSON.stringify(riga),

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1B4B6B">
+<title>Giunti — archivio</title>
+<link rel="stylesheet" href="stile.css">
+<link rel="stylesheet" href="archivio.css">
+</head>
+<body class="archivio">
+
+<section class="schermata attiva" id="s-accesso">
+  <div class="accesso">
+    <img src="icona.svg" alt="" class="marchio">
+    <h1>Giunti</h1>
+    <p class="occhiello">Archivio dei rilievi</p>
+    <form id="modulo-accesso">
+      <input type="email" id="email" placeholder="Email" autocomplete="username" required>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit" class="salva" id="b-entra">ENTRA</button>
+      <p class="errore-accesso" id="errore-accesso" hidden></p>
+    </form>
+  </div>
+</section>
+
+<section class="schermata" id="s-archivio">
+  <header class="testata">
+    <div class="marca">
+      <img src="icona.svg" alt="">
+      <div>
+        <h1>Giunti</h1>
+        <span id="sottotitolo">archivio dei rilievi</span>
+      </div>
+    </div>
+    <nav class="linguette">
+      <button class="tab attiva" data-sezione="rilievi" type="button">Rilievi</button>
+      <button class="tab" data-sezione="giunti" type="button">Giunti</button>
+      <button class="tab" data-sezione="statistiche" type="button">Statistiche</button>
+    </nav>
+    <button class="esci" id="b-esci" type="button">Esci</button>
+  </header>
+
+  <main>
+    <div class="sezione attiva" id="sez-rilievi">
+      <div class="vuoto" id="rilievi-vuoto" hidden>
+        <p>Nessun rilievo ancora in archivio.</p>
+        <p class="tenue">Compariranno qui appena userai l'app sul campo.</p>
+      </div>
+      <div class="griglia-rilievi" id="rilievi"></div>
+    </div>
+
+    <div class="sezione" id="sez-giunti">
+      <div class="filtri-riga">
+        <select id="f-strada"><option value="">Tutte le tratte</option></select>
+        <select id="f-stato">
+          <option value="">Tutti gli stati</option>
+          <option value="cattive">Cattive condizioni</option>
+          <option value="attenzionare">Da attenzionare</option>
+          <option value="buone_datate">Buone ma datati</option>
+          <option value="ottime">Ottime condizioni</option>
+        </select>
+        <select id="f-rilevati">
+          <option value="">Rilevati e non</option>
+          <option value="si">Solo con rilievi</option>
+          <option value="no">Mai rilevati</option>
+        </select>
+        <input id="f-cerca" type="search" placeholder="Cerca opera, strada o km…">
+        <span class="conteggio" id="conta-giunti"></span>
+      </div>
+      <div class="elenco-giunti" id="giunti"></div>
+    </div>
+
+    <div class="sezione" id="sez-statistiche">
+      <div id="statistiche"></div>
+    </div>
+  </main>
+</section>
+
+<div class="scheda-fondo" id="scheda" hidden>
+  <div class="scheda">
+    <button class="chiudi-scheda" id="b-chiudi-scheda" type="button">&times;</button>
+    <div id="scheda-corpo"></div>
+  </div>
+</div>
+
+<div class="avviso" id="avviso"></div>
+<script type="module" src="js/archivio.js"></script>
+</body>
+</html>
