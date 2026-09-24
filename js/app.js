@@ -20,7 +20,18 @@ const mostra = id => schermate.forEach(s =>
 let linee = [];
 let posizione = null;         // {lat, lon, precisione}
 let proposta = null;          // {linea, distanza}
+let rivale = null;            // il candidato piu vicino su un'altra strada
 let rilievo = null;           // quello che si sta compilando
+
+// Su quale tratta si sta lavorando. Dove due strade corrono affiancate —
+// A4 e tangenziale di Vicenza, per dirne una — la distanza non le distingue,
+// e nessun calcolo puo farlo: lo sa solo chi guida.
+const TRATTA = 'giunti-tratta';
+let tratta = localStorage.getItem(TRATTA) || '';
+
+function candidate() {
+  return tratta ? linee.filter(l => l.strada === tratta) : linee;
+}
 
 // --------------------------------------------------------------- avvisi
 let timerAvviso;
@@ -68,8 +79,14 @@ function seguiPosizione() {
 
 function aggiornaPosizione() {
   if (!posizione || !linee.length) return;
-  const trovate = vicine(linee, posizione.lat, posizione.lon, 1);
+  const insieme = candidate();
+  if (!insieme.length) return;
+  const trovate = vicine(insieme, posizione.lat, posizione.lon, 12);
   proposta = trovate[0];
+  // se il secondo candidato sta su un'altra strada ed e' quasi altrettanto
+  // vicino, la posizione da sola non basta a decidere
+  rivale = trovate.find(t => t.linea.strada !== proposta.linea.strada
+                             && t.distanza < proposta.distanza + 120) || null;
   const fiducia = affidabilita(proposta.distanza, posizione.precisione);
 
   $('posizione').className = 'posizione' + (fiducia === 'incerta' ? ' incerta' : '');
@@ -165,6 +182,17 @@ function disegnaRilievo() {
     ? ` · ${distanzaLeggibile(proposta.distanza)}` : '';
   $('r-dettaglio').textContent = `${l.strada} · km ${l.km}${dist}`;
 
+  const avvisoAmbiguo = document.querySelector('.ambiguo');
+  if (avvisoAmbiguo) avvisoAmbiguo.remove();
+  if (rivale && proposta && proposta.linea.id === l.id) {
+    const nota = document.createElement('div');
+    nota.className = 'ambiguo';
+    nota.innerHTML = `Qui corrono due strade affiancate: a ${Math.round(rivale.distanza)} m
+      c'è anche <b>${rivale.linea.strada}</b>, km ${rivale.linea.km}.
+      Controlla di essere sulla strada giusta, o scegli la tratta qui sopra.`;
+    document.querySelector('.linea-scelta').after(nota);
+  }
+
   $('colori').innerHTML = STATI.map(s => `
     <button class="colore${rilievo.colore === s ? ' scelto' : ''}" data-stato="${s}" type="button">
       <span class="macchia" style="background:${COLORE(s)}"></span>${NOMI_STATO[s]}
@@ -189,15 +217,16 @@ function disegnaRilievo() {
 function disegnaElenco(filtro = '') {
   const testo = filtro.trim().toLowerCase();
   let elenco;
+  const insieme = candidate();
   if (testo) {
-    elenco = linee
+    elenco = insieme
       .filter(l => `${l.opera} ${l.strada} ${l.km}`.toLowerCase().includes(testo))
       .slice(0, 60)
       .map(l => ({ linea: l, distanza: posizione ? metri(posizione.lat, posizione.lon, l.lat, l.lon) : null }));
   } else if (posizione) {
-    elenco = vicine(linee, posizione.lat, posizione.lon, 25);
+    elenco = vicine(insieme, posizione.lat, posizione.lon, 25);
   } else {
-    elenco = linee.slice(0, 40).map(l => ({ linea: l, distanza: null }));
+    elenco = insieme.slice(0, 40).map(l => ({ linea: l, distanza: null }));
   }
 
   $('elenco').innerHTML = elenco.map(({ linea, distanza }) => `
@@ -366,6 +395,12 @@ function collega() {
     mostra('s-rilievo');
   });
 
+  $('scelta-strada').addEventListener('change', e => {
+    tratta = e.target.value;
+    localStorage.setItem(TRATTA, tratta);
+    aggiornaPosizione();
+  });
+
   $('b-vocale').addEventListener('click', alternaVocale);
   $('b-salva').addEventListener('click', salva);
   $('b-sincronizza').addEventListener('click', provaSincronizzare);
@@ -400,6 +435,11 @@ async function apriApp() {
     avvisa('Non riesco a leggere il censimento: ' + String(err.message || err), 'male');
     return;
   }
+  const sel = $('scelta-strada');
+  [...new Set(linee.map(l => l.strada))].sort()
+    .forEach(s => sel.add(new Option(s, s)));
+  sel.value = tratta;
+
   seguiPosizione();
   aggiornaCoda();
   provaSincronizzare();

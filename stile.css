@@ -48,6 +48,15 @@ body { display: flex; flex-direction: column; }
 .posizione .segnale {
   font-size: 11px; text-transform: uppercase; letter-spacing: .07em; opacity: .8;
 }
+/* Dove due strade corrono affiancate — l'A4 e la tangenziale di Vicenza, per
+   dirne una — la distanza non basta a distinguerle: lo dice chi guida. */
+.scelta-strada {
+  margin-top: 8px; width: 100%; font: inherit; font-size: 13px;
+  padding: 7px 9px; border-radius: 8px; color: #fff;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+}
+.scelta-strada option { color: var(--inchiostro); }
+
 .posizione.cercando { background: #5C6560; }
 .posizione.incerta { background: #8A6D1F; }
 
@@ -120,6 +129,10 @@ body { display: flex; flex-direction: column; }
 .linea-scelta .nome { font-size: 17px; font-weight: 600; }
 .linea-scelta .dettaglio { font-size: 13px; color: var(--tenue); }
 .linea-scelta.mancante .nome { color: var(--allarme); }
+.ambiguo {
+  background: #FBF0D8; border: 1px solid #D9B45A; border-radius: 9px;
+  padding: 10px 12px; margin-top: 10px; font-size: 12.5px; color: #6B5314;
+}
 .linea-scelta.mancante .bottone-chiaro {
   background: var(--accento); color: #fff; border-color: var(--accento); font-weight: 600;
 }
