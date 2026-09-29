@@ -49,21 +49,33 @@ body { display: flex; flex-direction: column; }
   font-size: 11px; text-transform: uppercase; letter-spacing: .07em; opacity: .8;
 }
 /* Dove due strade corrono affiancate — l'A4 e la tangenziale di Vicenza, per
-   dirne una — la distanza non basta a distinguerle: lo dice chi guida. */
-.scelta-strada {
-  margin-top: 8px; width: 100%; font: inherit; font-size: 13px;
+   dirne una — la distanza non basta a distinguerle: lo dice chi guida. E
+   fermi in emergenza le due carreggiate distano meno dell'errore del GPS,
+   quindi anche quella la dice chi guida. */
+.scelte { display: flex; gap: 8px; margin-top: 8px; }
+.scelta {
+  flex: 1; min-width: 0; font: inherit; font-size: 13px;
   padding: 7px 9px; border-radius: 8px; color: #fff;
   background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
 }
-.scelta-strada option { color: var(--inchiostro); }
+#scelta-carreggiata { flex: 0 0 38%; }
+.scelta option { color: var(--inchiostro); }
+.scelta.proposta { border-color: rgba(255,255,255,.7); }
 
 .posizione.cercando { background: #5C6560; }
 .posizione.incerta { background: #8A6D1F; }
+/* nessun giunto nel raggio d'aggancio: la linea più vicina si mostra, ma
+   dichiarata per quello che è */
+.posizione.lontano { background: #46504C; }
+.posizione.lontano .dove { font-size: 16px; font-weight: 600; opacity: .95; }
 
 /* ---------------------------------------------------------------- scatto */
+/* Il pulsante sta in basso, dove arriva il pollice tenendo il telefono in una
+   mano sola: chi scatta è fermo in corsia d'emergenza e ha fretta. */
 .centro {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 20px; padding: 24px;
+  align-items: center; justify-content: flex-end; gap: 18px;
+  padding: 24px 24px 10px;
 }
 .scatta {
   width: 190px; height: 190px; border-radius: 50%; border: none;
@@ -92,10 +104,18 @@ body { display: flex; flex-direction: column; }
   border: 1px solid var(--linea); background: var(--sfondo);
   border-radius: 16px; color: var(--inchiostro);
 }
-.recenti { display: flex; flex-direction: column; gap: 7px; }
-.recente { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+/* I rilievi recenti si riaprono: si fotografa in emergenza e si compila
+   all'area di servizio. */
+.recenti { display: flex; flex-direction: column; gap: 2px; }
+.recente {
+  display: flex; align-items: center; gap: 9px; font-size: 13px; width: 100%;
+  background: none; border: none; font-family: inherit; color: var(--inchiostro);
+  padding: 7px 4px; text-align: left; border-radius: 8px;
+}
+.recente:active { background: var(--sfondo); }
 .recente .nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.recente .quando { color: var(--tenue); font-size: 11.5px; }
+.recente .quando { color: var(--tenue); font-size: 11.5px; white-space: nowrap; }
+.recente .apri { color: var(--accento); font-size: 15px; }
 .pallino { width: 11px; height: 11px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.2); }
 
 /* ---------------------------------------------------------------- rilievo */
@@ -115,6 +135,32 @@ body { display: flex; flex-direction: column; }
   position: absolute; bottom: 10px; left: 10px;
   background: rgba(0,0,0,.55); color: #fff; font-size: 12px;
   padding: 5px 10px; border-radius: 14px;
+}
+
+/* le foto del rilievo: si tocca per vederle grandi, la x toglie quelle non
+   ancora partite */
+.miniature { display: flex; gap: 6px; padding: 8px 16px 0; overflow-x: auto; }
+.miniature:empty { display: none; }
+.miniatura { position: relative; flex: none; }
+.miniatura img {
+  width: 54px; height: 54px; object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--linea); display: block;
+}
+.miniatura.gia-inviata {
+  width: 54px; height: 54px; border-radius: 8px; border: 1px dashed var(--linea);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--tenue); text-align: center; line-height: 1.2;
+}
+.miniatura .togli {
+  position: absolute; top: -5px; right: -5px; width: 21px; height: 21px;
+  border-radius: 50%; border: none; background: var(--inchiostro); color: #fff;
+  font-size: 13px; line-height: 1; padding: 0;
+}
+
+.elimina {
+  width: 100%; margin-top: 10px; border: 1px solid var(--linea);
+  background: none; border-radius: 12px; padding: 13px;
+  font: inherit; font-size: 14px; color: var(--allarme);
 }
 
 .corpo { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
@@ -160,6 +206,14 @@ body { display: flex; flex-direction: column; }
   display: flex; gap: 8px; align-items: baseline;
 }
 .carreggiata .titolo span { font-weight: 400; font-size: 11.5px; }
+/* quale delle due carreggiate si sta rilevando: guardando la foto in ufficio
+   non si distingue l'andata dal ritorno, quindi va detto qui */
+.segno-carreggiata {
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--tenue);
+  background: none; border: none; padding: 0; letter-spacing: .02em;
+}
+.carreggiata.scelta .segno-carreggiata { color: var(--accento); }
+.carreggiata.scelta .strisce { outline: 2px solid var(--accento-chiaro); outline-offset: 3px; }
 .strisce { display: flex; gap: 4px; }
 .corsia {
   flex: 1; height: 54px; border-radius: 8px; border: 1px solid rgba(0,0,0,.22);

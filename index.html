@@ -37,12 +37,18 @@
     <span class="dove" id="dove">Cerco la posizione…</span>
     <span class="opera" id="opera-vicina"></span>
     <span class="segnale" id="segnale">GPS in attesa</span>
-    <select class="scelta-strada" id="scelta-strada" aria-label="Tratta su cui stai lavorando">
-      <option value="">Tutte le tratte</option>
-    </select>
+    <div class="scelte">
+      <select class="scelta" id="scelta-strada" aria-label="Tratta su cui stai lavorando">
+        <option value="">Tutte le tratte</option>
+      </select>
+      <select class="scelta" id="scelta-carreggiata" aria-label="Carreggiata che stai percorrendo">
+        <option value="">Carreggiata?</option>
+      </select>
+    </div>
   </div>
 
   <div class="centro">
+    <p class="suggerimento">Un tocco, poi puoi rimetterti in marcia.<br>Colore e note anche dopo.</p>
     <button class="scatta" id="b-scatta" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
         <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
@@ -50,7 +56,6 @@
       </svg>
       SCATTA FOTO
     </button>
-    <p class="suggerimento">Un tocco, poi puoi rimetterti in marcia.<br>Colore e note anche dopo.</p>
   </div>
 
   <div class="fondo">
@@ -67,10 +72,11 @@
 <section class="schermata" id="s-rilievo">
   <div class="foto-wrap">
     <img id="anteprima" alt="Foto del giunto appena scattata">
-    <button class="chiudi" id="b-annulla" type="button" aria-label="Annulla">&times;</button>
+    <button class="chiudi" id="b-annulla" type="button" aria-label="Chiudi">&times;</button>
     <span class="conta-foto" id="conta-foto">1 foto</span>
     <button class="aggiungi-foto" id="b-aggiungi" type="button">+ foto</button>
   </div>
+  <div class="miniature" id="miniature"></div>
 
   <div class="corpo">
     <div class="blocco">
@@ -105,6 +111,7 @@
 
     <div class="blocco">
       <button class="salva" id="b-salva" type="button">SALVA RILIEVO</button>
+      <button class="elimina" id="b-elimina" type="button" hidden>Elimina questo rilievo</button>
     </div>
   </div>
 </section>

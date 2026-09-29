@@ -128,3 +128,22 @@ export async function inserisci(tabella, riga) {
   });
   return (await r.json())[0];
 }
+
+// Un rilievo si completa dopo: si fotografa in corsia d'emergenza e si
+// scrivono le note all'area di servizio. Quindi le righe già inviate devono
+// restare modificabili.
+export async function modifica(tabella, filtro, campi) {
+  const r = await chiama(`/rest/v1/${tabella}?${filtro}`, {
+    method: 'PATCH', body: JSON.stringify(campi),
+    headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+  });
+  return (await r.json())[0];
+}
+
+export async function cancella(tabella, filtro) {
+  await chiama(`/rest/v1/${tabella}?${filtro}`, { method: 'DELETE' });
+}
+
+export async function cancellaFile(bucket, percorso) {
+  await chiama(`/storage/v1/object/${bucket}/${percorso}`, { method: 'DELETE' });
+}

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#1B4B6B">
 <title>Giunti — archivio</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <link rel="stylesheet" href="stile.css">
 <link rel="stylesheet" href="archivio.css">
 </head>
@@ -34,15 +36,45 @@
       </div>
     </div>
     <nav class="linguette">
-      <button class="tab attiva" data-sezione="rilievi" type="button">Rilievi</button>
+      <button class="tab attiva" data-sezione="mappa" type="button">Mappa</button>
+      <button class="tab" data-sezione="schema" type="button">Schema</button>
+      <button class="tab" data-sezione="rilievi" type="button">Rilievi</button>
       <button class="tab" data-sezione="giunti" type="button">Giunti</button>
       <button class="tab" data-sezione="statistiche" type="button">Statistiche</button>
     </nav>
-    <button class="esci" id="b-esci" type="button">Esci</button>
+    <div class="in-fondo">
+      <a class="altrove" href="posizioni.html">Correggi le posizioni</a>
+      <button class="esci" id="b-esci" type="button">Esci</button>
+    </div>
   </header>
 
-  <main>
-    <div class="sezione attiva" id="sez-rilievi">
+  <main class="senza-margini">
+    <div class="sezione attiva senza-margini" id="sez-mappa">
+      <div class="filtri-riga sopra-mappa">
+        <select id="m-strada"><option value="">Tutte le tratte</option></select>
+        <select id="m-stato">
+          <option value="">Tutti gli stati</option>
+          <option value="cattive">Cattive condizioni</option>
+          <option value="attenzionare">Da attenzionare</option>
+          <option value="buone_datate">Buone ma datati</option>
+          <option value="ottime">Ottime condizioni</option>
+        </select>
+        <select id="m-rilevate">
+          <option value="">Rilevate e non</option>
+          <option value="si">Solo con un giudizio dal campo</option>
+          <option value="no">Mai rilevate</option>
+        </select>
+        <span class="conteggio" id="m-conta"></span>
+      </div>
+      <div id="mappa"></div>
+    </div>
+
+    <div class="sezione" id="sez-schema">
+      <nav class="sotto-linguette" id="schema-linguette"></nav>
+      <div id="schema-corpo"></div>
+    </div>
+
+    <div class="sezione" id="sez-rilievi">
       <div class="vuoto" id="rilievi-vuoto" hidden>
         <p>Nessun rilievo ancora in archivio.</p>
         <p class="tenue">Compariranno qui appena userai l'app sul campo.</p>

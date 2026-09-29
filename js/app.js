@@ -1,8 +1,10 @@
 // Giunti — schermata di rilievo.
 
-import { vicine, distanzaLeggibile, affidabilita, metri } from './vicini.js';
-import { accoda, sincronizza, allaRete, inCoda } from './coda.js';
-import { autenticato, entra, esci } from './rete.js';
+import { vicine, distanzaLeggibile, affidabilita, metri, carreggiataDallaRotta }
+  from './vicini.js';
+import { accoda, aggiorna, elimina, sincronizza, allaRete, inCoda, unRilievo }
+  from './coda.js';
+import { autenticato, entra, esci, leggi, urlFirmato } from './rete.js';
 import { censimento } from './dati.js';
 
 const STATI = ['ottime', 'buone_datate', 'attenzionare', 'cattive'];
@@ -23,14 +25,28 @@ let proposta = null;          // {linea, distanza}
 let rivale = null;            // il candidato piu vicino su un'altra strada
 let rilievo = null;           // quello che si sta compilando
 
-// Su quale tratta si sta lavorando. Dove due strade corrono affiancate —
-// A4 e tangenziale di Vicenza, per dirne una — la distanza non le distingue,
-// e nessun calcolo puo farlo: lo sa solo chi guida.
+// L'ultima rotta tenuta a velocità di marcia. Fermi in corsia d'emergenza le
+// due carreggiate distano meno dell'errore del GPS e non si distinguono; la
+// direzione in cui si stava andando un attimo prima, invece, le distingue.
+let rotta = null, rottaQuando = 0;
+const ROTTA_VALIDA_MS = 3 * 60 * 1000;
+
+// Su quale tratta e su quale carreggiata si sta lavorando. Dove due strade
+// corrono affiancate — A4 e tangenziale di Vicenza, per dirne una — la
+// distanza non le distingue, e nessun calcolo puo farlo: lo sa solo chi guida.
 const TRATTA = 'giunti-tratta';
+const CARREGGIATA = 'giunti-carreggiata';
 let tratta = localStorage.getItem(TRATTA) || '';
+let carreggiata = localStorage.getItem(CARREGGIATA) || '';
 
 function candidate() {
   return tratta ? linee.filter(l => l.strada === tratta) : linee;
+}
+
+function carreggiateDisponibili() {
+  const nomi = new Set();
+  candidate().forEach(l => l.carreggiate.forEach(c => nomi.add(c.nome)));
+  return [...nomi].sort();
 }
 
 // --------------------------------------------------------------- avvisi
@@ -65,11 +81,18 @@ function seguiPosizione() {
         lat: p.coords.latitude, lon: p.coords.longitude,
         precisione: p.coords.accuracy,
       };
+      // la rotta vale solo se si stava andando: da fermi è rumore
+      if (p.coords.heading != null && p.coords.speed != null && p.coords.speed > 4) {
+        rotta = p.coords.heading;
+        rottaQuando = Date.now();
+        proponiCarreggiata();
+      }
       aggiornaPosizione();
     },
     e => {
       $('posizione').className = 'posizione incerta';
       $('dove').textContent = 'Posizione non disponibile';
+      $('opera-vicina').textContent = '';
       $('segnale').textContent = e.code === e.PERMISSION_DENIED
         ? 'permesso negato — scegli la linea a mano'
         : 'GPS assente — scegli la linea a mano';
@@ -83,17 +106,51 @@ function aggiornaPosizione() {
   if (!insieme.length) return;
   const trovate = vicine(insieme, posizione.lat, posizione.lon, 12);
   proposta = trovate[0];
-  // se il secondo candidato sta su un'altra strada ed e' quasi altrettanto
+  const fiducia = affidabilita(proposta.distanza, posizione.precisione);
+  const gps = `GPS ±${Math.round(posizione.precisione)} m`;
+
+  // Fuori dal raggio d'aggancio la linea più vicina non è dove sei: si mostra
+  // lo stesso, perché serve a orientarsi, ma detta per quello che è.
+  if (fiducia === 'incerta') {
+    rivale = null;
+    $('posizione').className = 'posizione lontano';
+    $('dove').textContent = 'Nessun giunto qui vicino';
+    $('opera-vicina').textContent = `il più vicino ${distanzaLeggibile(proposta.distanza)}`
+      + ` · ${proposta.linea.opera || proposta.linea.strada}, km ${proposta.linea.km}`;
+    $('segnale').textContent = `${gps} · puoi scattare, la linea la scegli tu`;
+    return;
+  }
+
+  // se il secondo candidato sta su un'altra strada ed è quasi altrettanto
   // vicino, la posizione da sola non basta a decidere
   rivale = trovate.find(t => t.linea.strada !== proposta.linea.strada
                              && t.distanza < proposta.distanza + 120) || null;
-  const fiducia = affidabilita(proposta.distanza, posizione.precisione);
+  $('posizione').className = 'posizione';
+  $('dove').textContent = proposta.linea.opera || 'Opera non indicata';
+  $('opera-vicina').textContent = `${proposta.linea.strada} · km ${proposta.linea.km}`;
+  $('segnale').textContent = `${distanzaLeggibile(proposta.distanza)} · ${gps}`;
+}
 
-  $('posizione').className = 'posizione' + (fiducia === 'incerta' ? ' incerta' : '');
-  $('dove').textContent = `${proposta.linea.strada} · km ${proposta.linea.km}`;
-  $('opera-vicina').textContent = proposta.linea.opera || '';
-  $('segnale').textContent =
-    `${distanzaLeggibile(proposta.distanza)} · GPS ±${Math.round(posizione.precisione)} m`;
+// La carreggiata proposta dalla rotta è solo una proposta: se è già stata
+// scelta a mano non si tocca, perché chi guida ne sa più del GPS.
+function proponiCarreggiata() {
+  if (carreggiata) return;
+  if (Date.now() - rottaQuando > ROTTA_VALIDA_MS) return;
+  const nome = carreggiataDallaRotta(rotta, carreggiateDisponibili());
+  if (!nome) return;
+  carreggiata = nome;
+  const sel = $('scelta-carreggiata');
+  sel.value = nome;
+  sel.classList.add('proposta');
+}
+
+function riempiCarreggiate() {
+  const sel = $('scelta-carreggiata');
+  const nomi = carreggiateDisponibili();
+  sel.innerHTML = '<option value="">Carreggiata?</option>'
+    + nomi.map(n => `<option value="${n}">${n}</option>`).join('');
+  sel.value = nomi.includes(carreggiata) ? carreggiata : '';
+  if (!sel.value) carreggiata = '';
 }
 
 // ---------------------------------------------------------------- foto
@@ -121,8 +178,7 @@ async function fotoScattata(file, aggiuntiva) {
   } else {
     nuovoRilievo(blob);
   }
-  $('anteprima').src = URL.createObjectURL(rilievo.foto[rilievo.foto.length - 1]);
-  $('conta-foto').textContent = `${rilievo.foto.length} foto`;
+  disegnaFoto();
   mostra('s-rilievo');
 }
 
@@ -135,19 +191,70 @@ function nuovoRilievo(primaFoto) {
     affidabilita(proposta.distanza, posizione && posizione.precisione) !== 'incerta';
   const linea = fidato ? proposta.linea : null;
   rilievo = {
+    id: crypto.randomUUID(),
     linea_id: linea ? linea.id : null,
     linea,
+    carreggiata: carreggiata || null,
     data: new Date().toISOString().slice(0, 10),
     colore: null,
     stati: linea ? statiIniziali(linea) : [],
     nota: '',
     audio: null,
     foto: [primaFoto],
+    foto_caricate: 0,
+    urlRemote: [],
     lat: posizione ? posizione.lat : null,
     lon: posizione ? posizione.lon : null,
     precisione_m: posizione ? posizione.precisione : null,
+    esistente: false,
   };
+  $('nota').value = '';
+  azzeraVocale();
   disegnaRilievo();
+}
+
+// Riprendere in mano un rilievo già fatto: si fotografa il giunto in corsia
+// d'emergenza e si compila all'area di servizio, con calma.
+async function apriRilievo(id) {
+  const r = await unRilievo(id);
+  if (!r) return;
+  rilievo = {
+    id: r.id,
+    linea_id: r.linea_id,
+    linea: linee.find(l => l.id === r.linea_id) || null,
+    carreggiata: r.carreggiata || null,
+    data: r.data,
+    colore: r.colore || null,
+    stati: r.stati_corsie || [],
+    nota: r.nota || '',
+    audio: r.audio || null,
+    foto: r.foto || [],
+    foto_caricate: r.foto_caricate || 0,
+    urlRemote: [],
+    lat: r.lat, lon: r.lon, precisione_m: r.precisione_m,
+    creato_il: r.creato_il,
+    inviato_il: r.inviato_il || null,
+    esistente: true,
+  };
+  if (!rilievo.stati.length && rilievo.linea) rilievo.stati = statiIniziali(rilievo.linea);
+  $('nota').value = rilievo.nota;
+  azzeraVocale(!!rilievo.audio);
+  disegnaRilievo();
+  disegnaFoto();
+  mostra('s-rilievo');
+  // le foto già sul server non stanno più sul telefono: si richiamano da lì
+  if (rilievo.foto_caricate) recuperaFoto(rilievo.id);
+}
+
+async function recuperaFoto(id) {
+  try {
+    const righe = await leggi(`foto?rilievo_id=eq.${id}&select=path&order=scattata_il`);
+    const url = await Promise.all(righe.map(f => urlFirmato('foto', f.path, 3600)));
+    if (rilievo && rilievo.id === id) {
+      rilievo.urlRemote = url;
+      disegnaFoto();
+    }
+  } catch { /* senza rete restano i segnaposto */ }
 }
 
 // Si parte da com'era al censimento: se non è cambiato niente non c'è niente
@@ -159,12 +266,47 @@ function statiIniziali(linea) {
   }));
 }
 
+// Gli indirizzi temporanei delle foto vanno restituiti, altrimenti ogni
+// ridisegno lascia una copia della foto in memoria.
+let urlTemporanei = [];
+function indirizzo(blob) {
+  const u = URL.createObjectURL(blob);
+  urlTemporanei.push(u);
+  return u;
+}
+
+function disegnaFoto() {
+  urlTemporanei.forEach(u => URL.revokeObjectURL(u));
+  urlTemporanei = [];
+  const locali = rilievo.foto || [];
+  const remote = rilievo.urlRemote || [];
+  const totale = remote.length + locali.length;
+
+  const ultima = locali.length ? indirizzo(locali[locali.length - 1])
+    : (remote.length ? remote[remote.length - 1] : '');
+  $('anteprima').src = ultima;
+  $('conta-foto').textContent = totale === 1 ? '1 foto' : `${totale} foto`;
+
+  const segnaposto = Math.max(0, (rilievo.foto_caricate || 0) - remote.length);
+  $('miniature').innerHTML = [
+    ...remote.map(u => `<div class="miniatura"><img src="${u}" alt=""></div>`),
+    ...Array(segnaposto).fill('<div class="miniatura gia-inviata">già<br>inviata</div>'),
+    ...locali.map((b, i) => `<div class="miniatura">
+        <img src="${indirizzo(b)}" alt="">
+        <button class="togli" data-foto="${i}" type="button" aria-label="Togli">&times;</button>
+      </div>`),
+  ].join('');
+}
+
 function disegnaRilievo() {
   const l = rilievo.linea;
 
   // Finché non si sa a quale giunto appartiene, non si può salvare.
   $('b-salva').disabled = !l;
-  $('b-salva').textContent = l ? 'SALVA RILIEVO' : 'SCEGLI PRIMA LA LINEA';
+  $('b-salva').textContent = l
+    ? (rilievo.esistente ? 'SALVA LE MODIFICHE' : 'SALVA RILIEVO')
+    : 'SCEGLI PRIMA LA LINEA';
+  $('b-elimina').hidden = !rilievo.esistente;
   document.querySelector('.linea-scelta').classList.toggle('mancante', !l);
 
   if (!l) {
@@ -178,13 +320,13 @@ function disegnaRilievo() {
   }
 
   $('r-opera').textContent = l.opera || 'Opera non indicata';
-  const dist = proposta && proposta.linea.id === l.id
+  const dist = proposta && proposta.linea.id === l.id && !rilievo.esistente
     ? ` · ${distanzaLeggibile(proposta.distanza)}` : '';
   $('r-dettaglio').textContent = `${l.strada} · km ${l.km}${dist}`;
 
   const avvisoAmbiguo = document.querySelector('.ambiguo');
   if (avvisoAmbiguo) avvisoAmbiguo.remove();
-  if (rivale && proposta && proposta.linea.id === l.id) {
+  if (rivale && proposta && proposta.linea.id === l.id && !rilievo.esistente) {
     const nota = document.createElement('div');
     nota.className = 'ambiguo';
     nota.innerHTML = `Qui corrono due strade affiancate: a ${Math.round(rivale.distanza)} m
@@ -198,11 +340,17 @@ function disegnaRilievo() {
       <span class="macchia" style="background:${COLORE(s)}"></span>${NOMI_STATO[s]}
     </button>`).join('');
 
+  // La carreggiata fa parte del rilievo: senza, guardando la foto in ufficio
+  // non si sa se il giunto è quello di andata o quello di ritorno.
   $('corsie').innerHTML = rilievo.stati.map((c, ic) => {
-    const info = l.carreggiate[ic];
+    const info = l.carreggiate[ic] || {};
     const meta = [info.modello, info.anno].filter(Boolean).join(' · ');
-    return `<div class="carreggiata">
-      <div class="titolo">${info.nome}${info.doppio_senso ? ' (doppio senso)' : ''}
+    const sua = rilievo.carreggiata === c.carreggiata;
+    return `<div class="carreggiata${sua ? ' scelta' : ''}">
+      <div class="titolo">
+        <button class="segno-carreggiata" data-carr="${c.carreggiata}" type="button">
+          ${sua ? '●' : '○'} ${c.carreggiata}</button>
+        ${info.doppio_senso ? '<span>(doppio senso)</span>' : ''}
         <span>${meta}</span></div>
       <div class="strisce">${c.corsie.map((x, ix) => `
         <button class="corsia" data-c="${ic}" data-i="${ix}" type="button"
@@ -241,6 +389,15 @@ function disegnaElenco(filtro = '') {
 
 // -------------------------------------------------------------- vocale
 let registratore = null, pezziAudio = [];
+
+function azzeraVocale(gia = false) {
+  $('b-vocale').className = gia ? 'vocale pronta' : 'vocale';
+  $('vocale-testo').textContent = gia
+    ? 'Nota vocale registrata — tocca per rifarla'
+    : 'Registra nota vocale';
+  $('onda').hidden = true;
+}
+
 async function alternaVocale() {
   if (registratore && registratore.state === 'recording') {
     registratore.stop();
@@ -255,9 +412,7 @@ async function alternaVocale() {
     registratore.onstop = () => {
       flusso.getTracks().forEach(t => t.stop());
       rilievo.audio = new Blob(pezziAudio, { type: tipo });
-      $('b-vocale').className = 'vocale pronta';
-      $('vocale-testo').textContent = 'Nota vocale registrata — tocca per rifarla';
-      $('onda').hidden = true;
+      azzeraVocale(true);
     };
     registratore.start();
     $('b-vocale').className = 'vocale registra';
@@ -293,29 +448,64 @@ async function salva() {
       rilievo.precisione_m = p.precisione;
     }
   }
-  await accoda({
+
+  const record = {
+    id: rilievo.id,
     linea_id: rilievo.linea_id,
+    carreggiata: rilievo.carreggiata || null,
     data: rilievo.data,
     colore: rilievo.colore,
     stati_corsie: rilievo.stati,
     nota: rilievo.nota || null,
     audio: rilievo.audio,
     foto: rilievo.foto,
+    foto_caricate: rilievo.foto_caricate || 0,
     lat: rilievo.lat, lon: rilievo.lon, precisione_m: rilievo.precisione_m,
+    creato_il: rilievo.creato_il,
+    inviato_il: rilievo.inviato_il || null,
     etichetta: rilievo.linea.opera || rilievo.linea.strada,
-  });
+  };
+  if (rilievo.esistente) await aggiorna(record);
+  else await accoda(record);
+
   rilievo = null;
   $('nota').value = '';
-  $('b-vocale').className = 'vocale';
-  $('vocale-testo').textContent = 'Registra nota vocale';
+  azzeraVocale();
   $('b-salva').disabled = false;
   mostra('s-scatto');
-  avvisa('Rilievo salvato', 'buono');
+  avvisa(record.inviato_il ? 'Modifiche salvate' : 'Rilievo salvato', 'buono');
   aggiornaCoda();
   provaSincronizzare();
 }
 
+async function eliminaRilievo() {
+  const dove = rilievo.linea ? `${rilievo.linea.opera || rilievo.linea.strada}, km ${rilievo.linea.km}` : '';
+  const inviato = rilievo.inviato_il;
+  if (!confirm(inviato
+    ? `Il rilievo di ${dove} è già stato inviato: cancellandolo spariscono anche `
+      + `le foto e le note dall'archivio, per tutti. Procedo?`
+    : `Cancello il rilievo di ${dove}? Non è ancora stato inviato, quindi va perso.`)) return;
+  try {
+    await elimina(rilievo.id);
+    rilievo = null;
+    mostra('s-scatto');
+    avvisa('Rilievo cancellato', 'buono');
+    aggiornaCoda();
+  } catch (e) {
+    avvisa('Non riesco a cancellarlo: ' + String(e.message || e), 'male');
+  }
+}
+
 // ------------------------------------------------------------- la coda
+function quando(r) {
+  if (r.stato !== 'inviato') return 'da inviare';
+  const d = new Date(r.modificato_il || r.creato_il);
+  const oggi = new Date().toISOString().slice(0, 10);
+  return d.toISOString().slice(0, 10) === oggi
+    ? d.toTimeString().slice(0, 5)
+    : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
 async function aggiornaCoda() {
   const tutti = await inCoda();
   const attesa = tutti.filter(r => r.stato !== 'inviato');
@@ -324,13 +514,16 @@ async function aggiornaCoda() {
     : 'Tutto sincronizzato';
   $('b-sincronizza').hidden = attesa.length === 0;
 
-  const recenti = tutti.sort((a, b) => b.creato_il.localeCompare(a.creato_il)).slice(0, 4);
+  const recenti = tutti
+    .sort((a, b) => (b.modificato_il || b.creato_il).localeCompare(a.modificato_il || a.creato_il))
+    .slice(0, 3);
   $('recenti').innerHTML = recenti.map(r => `
-    <div class="recente">
+    <button class="recente" data-id="${r.id}" type="button">
       <span class="pallino" style="background:${COLORE(r.colore)}"></span>
       <span class="nome">${r.etichetta || r.linea_id}</span>
-      <span class="quando">${r.stato === 'inviato' ? 'inviato' : 'in attesa'}</span>
-    </div>`).join('');
+      <span class="quando">${quando(r)}</span>
+      <span class="apri">›</span>
+    </button>`).join('');
 }
 
 async function provaSincronizzare() {
@@ -356,6 +549,17 @@ function collega() {
     e.target.value = '';
   });
 
+  $('miniature').addEventListener('click', e => {
+    const b = e.target.closest('.togli');
+    if (!b) return;
+    rilievo.foto.splice(+b.dataset.foto, 1);
+    if (!rilievo.foto.length && !rilievo.foto_caricate) {
+      avvisa('Un rilievo senza foto non ha molto senso: ne serve almeno una');
+      return disegnaFoto();
+    }
+    disegnaFoto();
+  });
+
   $('b-annulla').addEventListener('click', () => {
     rilievo = null;
     mostra('s-scatto');
@@ -369,6 +573,12 @@ function collega() {
   });
 
   $('corsie').addEventListener('click', e => {
+    const segno = e.target.closest('.segno-carreggiata');
+    if (segno) {
+      rilievo.carreggiata = rilievo.carreggiata === segno.dataset.carr
+        ? null : segno.dataset.carr;
+      return disegnaRilievo();
+    }
     const b = e.target.closest('.corsia');
     if (!b || !rilievo.linea) return;
     const c = rilievo.stati[+b.dataset.c].corsie[+b.dataset.i];
@@ -395,14 +605,26 @@ function collega() {
     mostra('s-rilievo');
   });
 
+  $('recenti').addEventListener('click', e => {
+    const b = e.target.closest('.recente');
+    if (b) apriRilievo(b.dataset.id);
+  });
+
   $('scelta-strada').addEventListener('change', e => {
     tratta = e.target.value;
     localStorage.setItem(TRATTA, tratta);
+    riempiCarreggiate();
     aggiornaPosizione();
+  });
+  $('scelta-carreggiata').addEventListener('change', e => {
+    carreggiata = e.target.value;
+    localStorage.setItem(CARREGGIATA, carreggiata);
+    e.target.classList.remove('proposta');
   });
 
   $('b-vocale').addEventListener('click', alternaVocale);
   $('b-salva').addEventListener('click', salva);
+  $('b-elimina').addEventListener('click', eliminaRilievo);
   $('b-sincronizza').addEventListener('click', provaSincronizzare);
   allaRete(provaSincronizzare);
 }
@@ -439,6 +661,7 @@ async function apriApp() {
   [...new Set(linee.map(l => l.strada))].sort()
     .forEach(s => sel.add(new Option(s, s)));
   sel.value = tratta;
+  riempiCarreggiate();
 
   seguiPosizione();
   aggiornaCoda();

@@ -173,3 +173,208 @@ table.statistiche td { padding: 8px 12px; border-bottom: 1px solid var(--linea);
 table.statistiche tr:last-child td { border-bottom: none; }
 table.statistiche .num { text-align: right; font-variant-numeric: tabular-nums;
                          font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+
+/* ===================================================== mappa e schema ====
+   Le due sezioni nuove: la mappa reale, che e' la pagina d'apertura, e le
+   mappe schematiche divise per tratta come i fogli dell'Excel. */
+
+.testata .in-fondo { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.testata .altrove {
+  color: rgba(255,255,255,.75); font-size: 12px; text-decoration: none;
+  border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 5px 11px;
+}
+.testata .altrove:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+/* la mappa vuole tutta l'altezza che c'e', senza margini attorno */
+main.senza-margini { padding: 0; overflow: hidden; }
+.sezione.senza-margini.attiva { display: flex; flex-direction: column; height: 100%; }
+.sopra-mappa {
+  padding: 10px 22px; background: var(--carta);
+  border-bottom: 1px solid var(--linea); margin: 0;
+}
+#mappa { flex: 1; min-height: 420px; background: var(--sfondo); }
+.leaflet-container { font: inherit; }
+
+/* ------------------------------------------------------ schema per tratta */
+.sotto-linguette {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px;
+  border-bottom: 1px solid var(--linea); padding-bottom: 12px;
+}
+.sotto-tab {
+  font: inherit; font-size: 13px; padding: 7px 13px; border-radius: 8px;
+  border: 1px solid var(--linea); background: var(--carta);
+  color: var(--inchiostro); cursor: pointer; display: flex; gap: 7px; align-items: center;
+}
+.sotto-tab span {
+  font-size: 11px; color: var(--tenue); font-variant-numeric: tabular-nums;
+}
+.sotto-tab.attiva {
+  background: var(--accento); border-color: var(--accento); color: #fff; font-weight: 600;
+}
+.sotto-tab.attiva span { color: rgba(255,255,255,.75); }
+
+/* un blocco per ponte, separati: nei fogli era la cosa che mancava */
+.blocco-opera { margin-bottom: 26px; }
+.blocco-opera h3 {
+  margin: 0 0 8px; font-size: 14.5px; display: flex; gap: 12px; align-items: baseline;
+}
+.blocco-opera h3 span { font-size: 11.5px; color: var(--tenue); font-weight: 400; }
+
+table.schema {
+  border-collapse: collapse; background: var(--carta);
+  border: 1px solid var(--linea); border-radius: 9px; overflow: hidden;
+}
+table.schema th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--tenue); padding: 7px 12px; background: var(--sfondo);
+  border-bottom: 1px solid var(--linea);
+}
+table.schema td {
+  padding: 6px 12px; border-bottom: 1px solid var(--linea); vertical-align: top;
+}
+table.schema tr:last-child td { border-bottom: none; }
+table.schema tbody tr { cursor: pointer; }
+table.schema tbody tr:hover { background: var(--accento-chiaro); }
+table.schema .km { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; white-space: nowrap; }
+table.schema .strisce { display: flex; gap: 2px; }
+table.schema .corsia {
+  width: 34px; height: 24px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2);
+  font-size: 10px; font-weight: 700; color: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+}
+table.schema .meta { font-size: 10.5px; color: var(--tenue); margin-top: 3px; }
+table.schema td.assente { background: repeating-linear-gradient(
+  45deg, transparent, transparent 5px, rgba(0,0,0,.035) 5px, rgba(0,0,0,.035) 10px); }
+table.schema .segni { white-space: nowrap; font-size: 11px; color: var(--tenue); }
+table.schema .segni .segno { margin-right: 8px; }
+table.schema .segni .foto { color: var(--accento); }
+
+/* ==================================================== scheda del ponte ====
+   Non si apre la singola linea ma tutto il ponte, con la linea da cui si e'
+   arrivati evidenziata: un giunto si giudica rispetto agli altri della stessa
+   opera. */
+
+.scheda-testa .interruttore {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+  font-size: 12.5px; color: var(--tenue); cursor: pointer;
+}
+
+.riga-linea {
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--carta);
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.riga-linea.evidenziata { border-color: var(--accento); box-shadow: 0 0 0 3px var(--accento-chiaro); }
+.intestazione-linea {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px;
+}
+.intestazione-linea .km { font-size: 14px; font-weight: 600; }
+.intestazione-linea .conta { font-size: 11.5px; color: var(--tenue); margin-left: auto; }
+.intestazione-linea .segno { color: var(--sicuro); font-size: 12px; }
+
+.corpo-linea { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.schema-linea { display: flex; gap: 18px; flex: 1; min-width: 260px; }
+.carr-scheda .titolo {
+  font-size: 11.5px; color: var(--tenue); margin-bottom: 4px;
+  display: flex; gap: 7px; align-items: baseline;
+}
+.carr-scheda .titolo b { color: var(--inchiostro); font-size: 12px; }
+.carr-scheda .titolo .meta { font-size: 11px; }
+.carr-scheda .strisce { display: flex; gap: 3px; }
+.carr-scheda .corsia {
+  width: 42px; height: 34px; border-radius: 4px; border: 1px solid rgba(0,0,0,.2);
+  font: inherit; font-size: 11px; font-weight: 700; color: rgba(0,0,0,.65);
+  position: relative; cursor: default;
+}
+.in-modifica .carr-scheda .corsia { cursor: pointer; }
+.in-modifica .carr-scheda .corsia:hover { outline: 2px solid var(--accento); outline-offset: 1px; }
+.in-modifica .carr-scheda .titolo .meta {
+  cursor: pointer; border-bottom: 1px dashed var(--tenue);
+}
+/* l'angolo piegato dice: questo valore l'ha messo l'ufficio, non l'Excel */
+.carr-scheda .corsia .corretta {
+  position: absolute; top: 0; right: 0; width: 0; height: 0;
+  border-top: 7px solid rgba(0,0,0,.45); border-left: 7px solid transparent;
+}
+.carr-scheda .segno { color: var(--accento); font-size: 11px; }
+
+.media-linea { flex: 0 1 auto; }
+.foto-linea { display: flex; gap: 6px; flex-wrap: wrap; }
+.foto-linea img {
+  width: 104px; height: 78px; object-fit: cover; border-radius: 6px;
+  border: 1px solid var(--linea); cursor: zoom-in; background: #22252a;
+}
+.niente-foto { font-size: 11.5px; color: var(--tenue); font-style: italic; }
+
+.voci { display: flex; gap: 22px; margin-top: 12px; flex-wrap: wrap; }
+.voce-gruppo { flex: 1; min-width: 240px; }
+.voce-gruppo h4 {
+  margin: 0 0 7px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--tenue); font-weight: 600;
+}
+.voce { border-left: 2px solid var(--linea); padding: 2px 0 2px 10px; margin-bottom: 9px; }
+.voce.commento { border-left-color: var(--accento); }
+.voce .quando {
+  font-size: 11px; color: var(--tenue); display: flex; align-items: center; gap: 6px;
+}
+.voce .testo { margin: 3px 0 0; font-size: 13px; white-space: pre-wrap; }
+.voce audio { width: 100%; max-width: 320px; height: 30px; margin-top: 6px; }
+.togli-commento {
+  margin-left: auto; border: none; background: none; color: var(--tenue);
+  font-size: 15px; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.togli-commento:hover { color: var(--allarme); }
+
+.nuovo-commento { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
+.nuovo-commento textarea {
+  flex: 1; font: inherit; font-size: 13px; padding: 8px 10px; min-height: 0;
+  border: 1px solid var(--linea); border-radius: 8px; resize: vertical; margin: 0;
+}
+.nuovo-commento button {
+  font: inherit; font-size: 12.5px; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--linea); background: var(--sfondo); cursor: pointer;
+}
+
+/* il menu degli stati, quando si corregge una corsia */
+.menu-stati {
+  position: fixed; z-index: 300; background: var(--carta);
+  border: 1px solid var(--linea); border-radius: 9px; padding: 4px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); display: flex; flex-direction: column;
+}
+.menu-stati button {
+  display: flex; align-items: center; gap: 9px; font: inherit; font-size: 13px;
+  padding: 7px 12px; border: none; background: none; border-radius: 6px;
+  cursor: pointer; text-align: left; white-space: nowrap;
+}
+.menu-stati button:hover { background: var(--sfondo); }
+.menu-stati .macchia {
+  width: 15px; height: 15px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2);
+}
+
+/* foto a piena pagina, con le frecce per scorrere quelle della stessa linea */
+.ingrandita .didascalia {
+  position: absolute; bottom: 22px; left: 0; right: 0; text-align: center;
+  color: rgba(255,255,255,.8); font-size: 13px;
+}
+.ingrandita .prec, .ingrandita .succ {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.12); color: #fff; border: none;
+  width: 46px; height: 76px; font-size: 30px; cursor: pointer;
+}
+.ingrandita .prec { left: 0; border-radius: 0 8px 8px 0; }
+.ingrandita .succ { right: 0; border-radius: 8px 0 0 8px; }
+.ingrandita .prec:hover, .ingrandita .succ:hover { background: rgba(255,255,255,.25); }
+
+/* istogramma degli anni di posa */
+.istogramma {
+  display: flex; align-items: flex-end; gap: 3px; margin: 14px 0 18px;
+  padding-bottom: 4px; overflow-x: auto;
+}
+.istogramma .col {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 26px;
+}
+.istogramma .v { font-size: 10px; color: var(--tenue); font-variant-numeric: tabular-nums; }
+.istogramma .b { width: 20px; background: var(--accento); border-radius: 2px 2px 0 0; }
+.istogramma .a { font-size: 10px; color: var(--tenue); font-variant-numeric: tabular-nums; }
+.tenue { color: var(--tenue); }
+main h3 { margin: 26px 0 10px; font-size: 14.5px; }
+main h3:first-child { margin-top: 0; }
