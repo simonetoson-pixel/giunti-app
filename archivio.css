@@ -301,6 +301,19 @@ table.schema .segni .foto { color: var(--accento); }
 }
 .carr-scheda .segno { color: var(--accento); font-size: 11px; }
 
+/* Il posto della carreggiata che su questa linea non ha giunto. Va tenuto,
+   e largo quanto le altre righe: senza, una linea di sola carreggiata est
+   scivolava a sinistra, sotto la colonna dell'ovest, e sembrava un giunto in
+   ovest. Sui ponti sull'Adige capita spesso. */
+.carr-scheda.vuota .titolo b { color: var(--tenue); font-weight: 600; }
+.carr-scheda.vuota .titolo span { font-size: 10.5px; font-style: italic; }
+.corsia-assente {
+  width: 42px; height: 34px; border-radius: 4px;
+  border: 1px dashed var(--linea);
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px,
+    rgba(0,0,0,.035) 4px, rgba(0,0,0,.035) 8px);
+}
+
 .media-linea { flex: 0 1 auto; }
 .foto-linea { display: flex; gap: 6px; flex-wrap: wrap; }
 .foto-linea img {
@@ -382,3 +395,10 @@ table.schema .segni .foto { color: var(--accento); }
 .tenue { color: var(--tenue); }
 main h3 { margin: 26px 0 10px; font-size: 14.5px; }
 main h3:first-child { margin-top: 0; }
+
+/* L'iniziale della carreggiata accanto alle tacche: senza, due righe dello
+   stesso ponte con carreggiate diverse sembravano la stessa cosa. */
+.riga-giunto .tacche .quale {
+  font-size: 9.5px; font-weight: 700; color: var(--tenue);
+  margin-right: 3px; letter-spacing: .04em;
+}

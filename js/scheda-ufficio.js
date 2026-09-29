@@ -71,14 +71,38 @@ function disegna() {
       </label>
     </div>
     <div class="scheda-corpo${modifica ? ' in-modifica' : ''}">
-      ${opera.linee.map(disegnaLinea).join('')}
+      ${opera.linee.map(l => disegnaLinea(l, colonne())).join('')}
     </div>`;
 
   collegaEventi();
   caricaMedia();
 }
 
-function disegnaLinea(l) {
+// Le colonne del ponte: tutte le carreggiate che compaiono su almeno una
+// delle sue linee, nell'ordine in cui stanno sul terreno.
+//
+// Vanno fissate per tutto il ponte, non prese linea per linea. Sull'Adige
+// certe linee hanno il giunto solo in est: disegnando solo le carreggiate
+// presenti, quella finiva nella prima posizione — sotto la colonna dell'ovest
+// di tutte le altre righe — e sembrava una linea in ovest.
+function colonne() {
+  const viste = new Map();
+  for (const l of opera.linee) {
+    for (const g of l.carreggiate) {
+      const c = viste.get(g.carreggiata);
+      // quante corsie tiene la colonna: serve a far combaciare la larghezza
+      // del posto vuoto con quella delle righe che il giunto ce l'hanno
+      if (!c) viste.set(g.carreggiata, { ordine: g.ordine, corsie: g.corsie.length });
+      else c.corsie = Math.max(c.corsie, g.corsie.length);
+    }
+  }
+  return [...viste.entries()]
+    .sort((a, b) => a[1].ordine - b[1].ordine)
+    .map(([nome, c]) => ({ nome, corsie: c.corsie }));
+}
+
+
+function disegnaLinea(l, nomi) {
   const suoi = rilieviDi(l.id);
   const commenti = commentiDi(l.id);
   const foto = suoi.flatMap(r => (r.foto || []).map(f => ({ ...f, rilievo: r })));
@@ -94,7 +118,14 @@ function disegnaLinea(l) {
 
     <div class="corpo-linea">
       <div class="schema-linea">
-        ${l.carreggiate.map(g => disegnaCarreggiata(g)).join('')}
+        ${nomi.map(col => {
+    const g = l.carreggiate.find(x => x.carreggiata === col.nome);
+    if (g) return disegnaCarreggiata(g);
+    return `<div class="carr-scheda vuota">
+      <div class="titolo"><b>${fuga(col.nome)}</b> <span>nessun giunto</span></div>
+      <div class="strisce">${'<span class="corsia-assente"></span>'.repeat(col.corsie)}</div>
+    </div>`;
+  }).join('')}
       </div>
 
       <div class="media-linea">

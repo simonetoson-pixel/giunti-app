@@ -104,7 +104,8 @@ function disegnaGiunti() {
         <span class="strada">${fuga(l.strada)}</span>
       </span>
       <span class="carreggiate">${l.carreggiate.map(g => `
-        <span class="tacche" title="${fuga(g.carreggiata)}">${g.corsie.map(c =>
+        <span class="tacche" title="${fuga(g.carreggiata)}">
+          <span class="quale">${fuga(g.carreggiata[0])}</span>${g.corsie.map(c =>
     `<span class="tacca" style="background:${COLORE(c.stato)}"></span>`).join('')}</span>`).join('')}
       </span>
       <span class="quanti">${quanti[l.id] ? `${quanti[l.id]} rilievi` : 'mai rilevato'}</span>
