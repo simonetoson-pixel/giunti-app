@@ -19,6 +19,11 @@ import {
 } from './dati-ufficio.js';
 
 const $ = id => document.getElementById(id);
+
+// le stesse misure che stanno in archivio.css per .carr-scheda .corsia
+const LARGHEZZA_CORSIA = 42;
+const DISTANZA_CORSIE = 3;
+
 let opera = null;
 let evidenziata = null;   // la linea da cui si è arrivati
 let modifica = false;
@@ -98,7 +103,16 @@ function colonne() {
   }
   return [...viste.entries()]
     .sort((a, b) => a[1].ordine - b[1].ordine)
-    .map(([nome, c]) => ({ nome, corsie: c.corsie }));
+    .map(([nome, c]) => ({
+      nome,
+      corsie: c.corsie,
+      // La larghezza della colonna la decidono le corsie, ed e' la stessa per
+      // tutte le righe del ponte. Lasciandola al contenuto, un blocco col
+      // titolo lungo ("OVEST FIP GPE 300 · 2011") si allargava piu delle sue
+      // corsie e spostava a destra la carreggiata accanto: le righe con il
+      // giunto in una sola carreggiata restavano disallineate dalle altre.
+      larghezza: c.corsie * LARGHEZZA_CORSIA + (c.corsie - 1) * DISTANZA_CORSIE,
+    }));
 }
 
 
@@ -120,12 +134,12 @@ function disegnaLinea(l, nomi) {
       <div class="schema-linea">
         ${nomi.map(col => {
     const g = l.carreggiate.find(x => x.carreggiata === col.nome);
-    if (g) return disegnaCarreggiata(g);
+    if (g) return disegnaCarreggiata(g, col.larghezza);
     // Solo lo spazio, senza disegnarci niente: le due carreggiate sono ponti
     // strutturalmente diversi, e qui il giunto non manca — non ci va. Una
     // cella tratteggiata o la scritta "nessun giunto" direbbero il contrario.
     return `<div class="carr-scheda vuota" aria-hidden="true"
-      style="width:${col.corsie * 42 + (col.corsie - 1) * 3}px"></div>`;
+      style="width:${col.larghezza}px"></div>`;
   }).join('')}
       </div>
 
@@ -144,9 +158,10 @@ function disegnaLinea(l, nomi) {
   </section>`;
 }
 
-function disegnaCarreggiata(g) {
+function disegnaCarreggiata(g, larghezza) {
   const meta = [g.modello, g.anno].filter(Boolean).join(' · ');
-  return `<div class="carr-scheda${g.corretto ? ' corretta' : ''}" data-giunto="${fuga(g.id)}">
+  return `<div class="carr-scheda${g.corretto ? ' corretta' : ''}"
+       style="width:${larghezza}px" data-giunto="${fuga(g.id)}">
     <div class="titolo">
       <b>${fuga(g.carreggiata)}</b>${g.doppio_senso ? ' <i>doppio senso</i>' : ''}
       <span class="meta" data-campo="meta">${fuga(meta) || '&mdash;'}</span>

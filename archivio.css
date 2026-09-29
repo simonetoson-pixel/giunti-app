@@ -276,10 +276,12 @@ table.schema .segni .foto { color: var(--accento); }
 .intestazione-linea .segno { color: var(--sicuro); font-size: 12px; }
 
 .corpo-linea { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
-.schema-linea { display: flex; gap: 18px; flex: 1; min-width: 260px; }
+.schema-linea { display: flex; gap: 18px; flex: 1; min-width: 260px; align-items: flex-end; }
+/* la larghezza la fissa il codice, uguale per tutte le righe del ponte */
+.carr-scheda { flex: none; }
 .carr-scheda .titolo {
   font-size: 11.5px; color: var(--tenue); margin-bottom: 4px;
-  display: flex; gap: 7px; align-items: baseline;
+  display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap;
 }
 .carr-scheda .titolo b { color: var(--inchiostro); font-size: 12px; }
 .carr-scheda .titolo .meta { font-size: 11px; }
