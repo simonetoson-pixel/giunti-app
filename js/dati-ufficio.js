@@ -115,14 +115,25 @@ function raggruppaPerOpera(linee) {
     gruppi.get(chiave).linee.push(l);
   }
   return [...gruppi.values()].map(o => {
-    o.linee.sort((a, b) => a.km_m - b.km_m);
-    o.km_da = o.linee[0].km;
-    o.km_a = o.linee[o.linee.length - 1].km;
+    o.linee.sort(perDisegno);
+    o.km_da = o.linee[o.linee.length - 1].km;
+    o.km_a = o.linee[0].km;
     o.lat = o.linee.reduce((s, l) => s + (l.lat || 0), 0) / o.linee.length;
     o.lon = o.linee.reduce((s, l) => s + (l.lon || 0), 0) / o.linee.length;
     return o;
   });
 }
+
+// L'ordine in cui si disegnano le linee di una tratta o di un ponte.
+//
+// Come nei fogli Excel: la chilometrica piu bassa in fondo e si sale. E' il
+// verso in cui si percorre la strada guardando lo schema dal basso, ed e'
+// unanime in tutti e undici i fogli del censimento — quindi e' il modo in
+// cui questi schemi si leggono da sempre, e cambiarlo confonde.
+export function perDisegno(a, b) {
+  return b.km_m - a.km_m;
+}
+
 
 export function operaDi(linea) {
   return dati.opere.find(o => o.chiave === `${linea.strada}|${linea.opera || '—'}`);

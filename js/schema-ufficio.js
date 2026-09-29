@@ -5,7 +5,7 @@
 // subito se su quella linea c'è una foto o un commento.
 
 import {
-  dati, COLORE, NOMI_STATO, rilieviDi, commentiDi,
+  dati, COLORE, NOMI_STATO, rilieviDi, commentiDi, perDisegno,
 } from './dati-ufficio.js';
 import { apriPonte } from './scheda-ufficio.js';
 
@@ -38,7 +38,8 @@ export function prepara() {
 }
 
 function disegna() {
-  const linee = dati.linee.filter(l => l.strada === tratta);
+  // chilometrica piu bassa in fondo, come nei fogli
+  const linee = dati.linee.filter(l => l.strada === tratta).slice().sort(perDisegno);
   if (!linee.length) { $('schema-corpo').innerHTML = ''; return; }
 
   // le colonne sono le carreggiate della tratta, nell'ordine in cui stanno
@@ -63,8 +64,8 @@ function disegna() {
     <div class="blocco-opera">
       <h3>${fuga(b.opera)}
         <span>${b.linee.length} ${b.linee.length === 1 ? 'linea' : 'linee'} ·
-          km ${b.linee[0].km}${b.linee.length > 1
-    ? ` &ndash; ${b.linee[b.linee.length - 1].km}` : ''}</span></h3>
+          km ${b.linee[b.linee.length - 1].km}${b.linee.length > 1
+    ? ` &ndash; ${b.linee[0].km}` : ''}</span></h3>
       <table class="schema">
         <thead><tr><th class="km">km</th>
           ${carreggiate.map(c => `<th>${fuga(c)}</th>`).join('')}
