@@ -121,10 +121,11 @@ function disegnaLinea(l, nomi) {
         ${nomi.map(col => {
     const g = l.carreggiate.find(x => x.carreggiata === col.nome);
     if (g) return disegnaCarreggiata(g);
-    return `<div class="carr-scheda vuota">
-      <div class="titolo"><b>${fuga(col.nome)}</b> <span>nessun giunto</span></div>
-      <div class="strisce">${'<span class="corsia-assente"></span>'.repeat(col.corsie)}</div>
-    </div>`;
+    // Solo lo spazio, senza disegnarci niente: le due carreggiate sono ponti
+    // strutturalmente diversi, e qui il giunto non manca — non ci va. Una
+    // cella tratteggiata o la scritta "nessun giunto" direbbero il contrario.
+    return `<div class="carr-scheda vuota" aria-hidden="true"
+      style="width:${col.corsie * 42 + (col.corsie - 1) * 3}px"></div>`;
   }).join('')}
       </div>
 
