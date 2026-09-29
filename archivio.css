@@ -102,8 +102,12 @@ main { flex: 1; overflow-y: auto; padding: 20px 22px 40px; }
 .riga-giunto .quanti { font-size: 11.5px; color: var(--tenue); width: 88px; text-align: right; flex: none; }
 
 /* -------------------------------------------------------------- la scheda */
+/* Sopra la mappa. Leaflet mette i propri livelli a 400 e i controlli a 800:
+   con un valore piu basso la scheda si apriva dietro la mappa e non si
+   vedeva. Da qui in su l'ordine e: scheda, menu degli stati, foto
+   ingrandita, avvisi. */
 .scheda-fondo {
-  position: fixed; inset: 0; background: rgba(20,24,26,.55); z-index: 100;
+  position: fixed; inset: 0; background: rgba(20,24,26,.55); z-index: 1100;
   display: flex; align-items: flex-start; justify-content: center; padding: 34px 20px; overflow-y: auto;
 }
 .scheda {
@@ -147,7 +151,7 @@ main { flex: 1; overflow-y: auto; padding: 20px 22px 40px; }
 .rilievo-storico audio { width: 100%; margin-top: 10px; height: 34px; }
 .rilievo-storico .nota { font-size: 13px; margin-top: 8px; }
 
-.ingrandita { position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 200;
+.ingrandita { position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 1300;
   display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 .ingrandita img { max-width: 94%; max-height: 94%; object-fit: contain; }
 
@@ -336,7 +340,7 @@ table.schema .segni .foto { color: var(--accento); }
 
 /* il menu degli stati, quando si corregge una corsia */
 .menu-stati {
-  position: fixed; z-index: 300; background: var(--carta);
+  position: fixed; z-index: 1200; background: var(--carta);
   border: 1px solid var(--linea); border-radius: 9px; padding: 4px;
   box-shadow: 0 6px 24px rgba(0,0,0,.18); display: flex; flex-direction: column;
 }
