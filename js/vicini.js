@@ -43,9 +43,26 @@ export function affidabilita(distanza, precisioneGps) {
   return 'incerta';
 }
 
-// La direzione di marcia dice su quale carreggiata si sta: fermi in corsia
-// d'emergenza le due carreggiate distano meno dell'errore del GPS, ma la
-// rotta tenuta poco prima di fermarsi no.
+// Da che parte si sta, guardando la posizione.
+//
+// Le due carreggiate distano una quindicina di metri l'una dall'altra, e chi
+// fotografa sta in corsia d'emergenza, sul bordo esterno: dal suo giunto
+// dista sei metri, dall'altro una ventina. Con un GPS da cinque o dieci
+// metri la differenza si vede — ma solo se e' netta, altrimenti e' meglio
+// non dire niente che dire la cosa sbagliata.
+export function carreggiataDallaPosizione(linea, lat, lon, precisioneGps) {
+  const con = (linea.carreggiate || []).filter(c => c.lat != null && c.lon != null);
+  if (con.length < 2) return null;
+  const misure = con
+    .map(c => ({ nome: c.nome, d: metri(lat, lon, c.lat, c.lon) }))
+    .sort((a, b) => a.d - b.d);
+  const margine = Math.max(precisioneGps || 0, 8);
+  return misure[1].d - misure[0].d >= margine ? misure[0].nome : null;
+}
+
+// La direzione di marcia dice a sua volta su quale carreggiata si sta: si
+// guida a destra, quindi la carreggiata e' quella verso cui si stava andando.
+// Vale anche da fermi, usando la rotta tenuta poco prima di accostare.
 export function carreggiataDallaRotta(rotta, nomi) {
   if (rotta == null || isNaN(rotta)) return null;
   const g = ((rotta % 360) + 360) % 360;

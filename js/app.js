@@ -1,7 +1,9 @@
 // Giunti — schermata di rilievo.
 
-import { vicine, distanzaLeggibile, affidabilita, metri, carreggiataDallaRotta }
-  from './vicini.js';
+import {
+  vicine, distanzaLeggibile, affidabilita, metri,
+  carreggiataDallaRotta, carreggiataDallaPosizione,
+} from './vicini.js';
 import { accoda, aggiorna, elimina, sincronizza, allaRete, inCoda, unRilievo }
   from './coda.js';
 import { autenticato, entra, esci, leggi, urlFirmato } from './rete.js';
@@ -38,6 +40,10 @@ const TRATTA = 'giunti-tratta';
 const CARREGGIATA = 'giunti-carreggiata';
 let tratta = localStorage.getItem(TRATTA) || '';
 let carreggiata = localStorage.getItem(CARREGGIATA) || '';
+// Se l'ha scelta lui non si tocca piu: chi guida ne sa piu di qualsiasi
+// calcolo. Se invece l'ha proposta l'app, ogni nuova posizione la rivede.
+let carreggiataScelta = localStorage.getItem(CARREGGIATA + '-scelta') === '1';
+let carreggiateInDisaccordo = false;
 
 function candidate() {
   return tratta ? linee.filter(l => l.strada === tratta) : linee;
@@ -85,7 +91,6 @@ function seguiPosizione() {
       if (p.coords.heading != null && p.coords.speed != null && p.coords.speed > 4) {
         rotta = p.coords.heading;
         rottaQuando = Date.now();
-        proponiCarreggiata();
       }
       aggiornaPosizione();
     },
@@ -113,6 +118,7 @@ function aggiornaPosizione() {
   // lo stesso, perché serve a orientarsi, ma detta per quello che è.
   if (fiducia === 'incerta') {
     rivale = null;
+    proponiCarreggiata();
     $('posizione').className = 'posizione lontano';
     $('dove').textContent = 'Nessun giunto qui vicino';
     $('opera-vicina').textContent = `il più vicino ${distanzaLeggibile(proposta.distanza)}`
@@ -125,19 +131,41 @@ function aggiornaPosizione() {
   // vicino, la posizione da sola non basta a decidere
   rivale = trovate.find(t => t.linea.strada !== proposta.linea.strada
                              && t.distanza < proposta.distanza + 120) || null;
+  proponiCarreggiata();
+
   $('posizione').className = 'posizione';
   $('dove').textContent = proposta.linea.opera || 'Opera non indicata';
   $('opera-vicina').textContent = `${proposta.linea.strada} · km ${proposta.linea.km}`;
-  $('segnale').textContent = `${distanzaLeggibile(proposta.distanza)} · ${gps}`;
+  $('segnale').textContent = `${distanzaLeggibile(proposta.distanza)} · ${gps}`
+    + (carreggiateInDisaccordo ? ' · carreggiata da confermare' : '');
 }
 
-// La carreggiata proposta dalla rotta è solo una proposta: se è già stata
-// scelta a mano non si tocca, perché chi guida ne sa più del GPS.
+// Su quale carreggiata si sta. Due indizi indipendenti:
+//
+//   - la posizione. Le due carreggiate distano una quindicina di metri e chi
+//     fotografa sta in corsia d'emergenza, sul bordo esterno: dal suo giunto
+//     dista una manciata di metri, dall'altro una ventina. È una misura
+//     presa adesso, quindi vale più dell'altra;
+//   - la rotta tenuta poco prima di accostare, che serve quando la posizione
+//     non è abbastanza netta o si è lontani dal giunto.
+//
+// Se si contraddicono non si sceglie: si dice che non è chiaro. E se la
+// carreggiata l'ha scelta lui dal selettore, non si tocca comunque.
 function proponiCarreggiata() {
-  if (carreggiata) return;
-  if (Date.now() - rottaQuando > ROTTA_VALIDA_MS) return;
-  const nome = carreggiataDallaRotta(rotta, carreggiateDisponibili());
-  if (!nome) return;
+  if (carreggiataScelta) return;
+
+  const nomi = carreggiateDisponibili();
+  const daPosizione = proposta && posizione
+    ? carreggiataDallaPosizione(proposta.linea, posizione.lat, posizione.lon,
+      posizione.precisione)
+    : null;
+  const daRotta = Date.now() - rottaQuando <= ROTTA_VALIDA_MS
+    ? carreggiataDallaRotta(rotta, nomi) : null;
+
+  carreggiateInDisaccordo = !!(daPosizione && daRotta && daPosizione !== daRotta);
+  const nome = daPosizione || daRotta;
+  if (!nome || !nomi.includes(nome)) return;
+
   carreggiata = nome;
   const sel = $('scelta-carreggiata');
   sel.value = nome;
@@ -150,7 +178,8 @@ function riempiCarreggiate() {
   sel.innerHTML = '<option value="">Carreggiata?</option>'
     + nomi.map(n => `<option value="${n}">${n}</option>`).join('');
   sel.value = nomi.includes(carreggiata) ? carreggiata : '';
-  if (!sel.value) carreggiata = '';
+  if (!sel.value) { carreggiata = ''; carreggiataScelta = false; }
+  sel.classList.toggle('proposta', !!carreggiata && !carreggiataScelta);
 }
 
 // ---------------------------------------------------------------- foto
@@ -618,7 +647,10 @@ function collega() {
   });
   $('scelta-carreggiata').addEventListener('change', e => {
     carreggiata = e.target.value;
+    carreggiataScelta = !!carreggiata;
+    carreggiateInDisaccordo = false;
     localStorage.setItem(CARREGGIATA, carreggiata);
+    localStorage.setItem(CARREGGIATA + '-scelta', carreggiataScelta ? '1' : '');
     e.target.classList.remove('proposta');
   });
 

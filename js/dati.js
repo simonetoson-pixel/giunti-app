@@ -43,8 +43,8 @@ function leggi() {
 
 // Una chiamata sola: linee con dentro le carreggiate e le loro corsie.
 async function scarica() {
-  const r = await chiama('/rest/v1/linee?select=id,strada,km,km_m,opera,lat,lon,'
-    + 'giunti(carreggiata,km,modello,anno,doppio_senso,ordine,'
+  const r = await chiama('/rest/v1/linee?select=id,strada,km,km_m,opera,lat,lon,rotta,'
+    + 'giunti(carreggiata,km,modello,anno,doppio_senso,ordine,lat,lon,'
     + 'corsie(posizione,corsia,stato))&order=strada,km_m');
   const grezze = await r.json();
 
@@ -60,12 +60,16 @@ async function scarica() {
   return grezze.map(l => ({
     id: l.id, strada: l.strada, km: l.km, km_m: l.km_m, opera: l.opera,
     lat: (corrette[l.id] || l).lat, lon: (corrette[l.id] || l).lon,
+    rotta: l.rotta,
     posizione_corretta: !!corrette[l.id],
     carreggiate: (l.giunti || [])
       .sort((a, b) => a.ordine - b.ordine)
       .map(g => ({
         nome: g.carreggiata, km: g.km, modello: g.modello, anno: g.anno,
         doppio_senso: g.doppio_senso,
+        // ogni carreggiata ha la sua posizione: sono una quindicina di metri
+        // fra l'una e l'altra, abbastanza perché il GPS le distingua
+        lat: g.lat, lon: g.lon,
         corsie: (g.corsie || [])
           .sort((a, b) => a.posizione - b.posizione)
           .map(c => [c.corsia, c.stato]),
