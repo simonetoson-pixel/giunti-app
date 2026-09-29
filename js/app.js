@@ -17,6 +17,28 @@ const NOMI_STATO = {
 const COLORE = s => `var(--${s || 'nessuno'})`;
 
 const $ = id => document.getElementById(id);
+
+// Collega un ascoltatore solo se l'elemento c'e'.
+//
+// Serve contro il disallineamento fra pagina e codice: il telefono tiene in
+// memoria l'app per funzionare senza campo, e dopo un aggiornamento puo
+// ritrovarsi la pagina di ieri con il codice di oggi. Prima, un elemento
+// mancante faceva fallire tutto il collegamento — compreso il pulsante
+// ENTRA, e l'accesso diventava impossibile senza che si capisse perche.
+const mancanti = [];
+
+function su(id, evento, fn) {
+  const e = $(id);
+  if (e) e.addEventListener(evento, fn);
+  else mancanti.push(id);
+}
+
+// scrivere in un elemento che potrebbe non esserci
+function scrivi(id, testo) {
+  const e = $(id);
+  if (e) e.textContent = testo;
+}
+
 const schermate = ['s-accesso', 's-scatto', 's-rilievo', 's-scelta'];
 const mostra = id => schermate.forEach(s =>
   $(s).classList.toggle('attiva', s === id));
@@ -119,11 +141,11 @@ function aggiornaPosizione() {
   if (fiducia === 'incerta') {
     rivale = null;
     proponiCarreggiata();
-    $('posizione').className = 'posizione lontano';
-    $('dove').textContent = 'Nessun giunto qui vicino';
-    $('opera-vicina').textContent = `il più vicino ${distanzaLeggibile(proposta.distanza)}`
-      + ` · ${proposta.linea.opera || proposta.linea.strada}, km ${proposta.linea.km}`;
-    $('segnale').textContent = `${gps} · puoi scattare, la linea la scegli tu`;
+    if ($('posizione')) $('posizione').className = 'posizione lontano';
+    scrivi('dove', 'Nessun giunto qui vicino');
+    scrivi('opera-vicina', `il più vicino ${distanzaLeggibile(proposta.distanza)}`
+      + ` · ${proposta.linea.opera || proposta.linea.strada}, km ${proposta.linea.km}`);
+    scrivi('segnale', `${gps} · puoi scattare, la linea la scegli tu`);
     return;
   }
 
@@ -133,11 +155,11 @@ function aggiornaPosizione() {
                              && t.distanza < proposta.distanza + 120) || null;
   proponiCarreggiata();
 
-  $('posizione').className = 'posizione';
-  $('dove').textContent = proposta.linea.opera || 'Opera non indicata';
-  $('opera-vicina').textContent = `${proposta.linea.strada} · km ${proposta.linea.km}`;
-  $('segnale').textContent = `${distanzaLeggibile(proposta.distanza)} · ${gps}`
-    + (carreggiateInDisaccordo ? ' · carreggiata da confermare' : '');
+  if ($('posizione')) $('posizione').className = 'posizione';
+  scrivi('dove', proposta.linea.opera || 'Opera non indicata');
+  scrivi('opera-vicina', `${proposta.linea.strada} · km ${proposta.linea.km}`);
+  scrivi('segnale', `${distanzaLeggibile(proposta.distanza)} · ${gps}`
+    + (carreggiateInDisaccordo ? ' · carreggiata da confermare' : ''));
 }
 
 // Su quale carreggiata si sta. Due indizi indipendenti:
@@ -168,12 +190,14 @@ function proponiCarreggiata() {
 
   carreggiata = nome;
   const sel = $('scelta-carreggiata');
+  if (!sel) return;
   sel.value = nome;
   sel.classList.add('proposta');
 }
 
 function riempiCarreggiate() {
   const sel = $('scelta-carreggiata');
+  if (!sel) return;
   const nomi = carreggiateDisponibili();
   sel.innerHTML = '<option value="">Carreggiata?</option>'
     + nomi.map(n => `<option value="${n}">${n}</option>`).join('');
@@ -564,21 +588,21 @@ async function provaSincronizzare() {
 
 // --------------------------------------------------------------- avvio
 function collega() {
-  $('b-scatta').addEventListener('click', () => {
+  su('b-scatta', 'click', () => {
     $('file-foto').dataset.aggiuntiva = '';
     $('file-foto').click();
   });
-  $('b-aggiungi').addEventListener('click', () => {
+  su('b-aggiungi', 'click', () => {
     $('file-foto').dataset.aggiuntiva = '1';
     $('file-foto').click();
   });
-  $('file-foto').addEventListener('change', e => {
+  su('file-foto', 'change', e => {
     const f = e.target.files[0];
     if (f) fotoScattata(f, e.target.dataset.aggiuntiva === '1');
     e.target.value = '';
   });
 
-  $('miniature').addEventListener('click', e => {
+  su('miniature', 'click', e => {
     const b = e.target.closest('.togli');
     if (!b) return;
     rilievo.foto.splice(+b.dataset.foto, 1);
@@ -589,19 +613,19 @@ function collega() {
     disegnaFoto();
   });
 
-  $('b-annulla').addEventListener('click', () => {
+  su('b-annulla', 'click', () => {
     rilievo = null;
     mostra('s-scatto');
   });
 
-  $('colori').addEventListener('click', e => {
+  su('colori', 'click', e => {
     const b = e.target.closest('.colore');
     if (!b || !rilievo.linea) return;
     rilievo.colore = rilievo.colore === b.dataset.stato ? null : b.dataset.stato;
     disegnaRilievo();
   });
 
-  $('corsie').addEventListener('click', e => {
+  su('corsie', 'click', e => {
     const segno = e.target.closest('.segno-carreggiata');
     if (segno) {
       rilievo.carreggiata = rilievo.carreggiata === segno.dataset.carr
@@ -616,14 +640,14 @@ function collega() {
     disegnaRilievo();
   });
 
-  $('b-cambia').addEventListener('click', () => {
+  su('b-cambia', 'click', () => {
     $('cerca').value = '';
     disegnaElenco();
     mostra('s-scelta');
   });
-  $('b-indietro').addEventListener('click', () => mostra('s-rilievo'));
-  $('cerca').addEventListener('input', e => disegnaElenco(e.target.value));
-  $('elenco').addEventListener('click', e => {
+  su('b-indietro', 'click', () => mostra('s-rilievo'));
+  su('cerca', 'input', e => disegnaElenco(e.target.value));
+  su('elenco', 'click', e => {
     const b = e.target.closest('.voce');
     if (!b) return;
     const linea = linee.find(l => l.id === b.dataset.id);
@@ -634,18 +658,18 @@ function collega() {
     mostra('s-rilievo');
   });
 
-  $('recenti').addEventListener('click', e => {
+  su('recenti', 'click', e => {
     const b = e.target.closest('.recente');
     if (b) apriRilievo(b.dataset.id);
   });
 
-  $('scelta-strada').addEventListener('change', e => {
+  su('scelta-strada', 'change', e => {
     tratta = e.target.value;
     localStorage.setItem(TRATTA, tratta);
     riempiCarreggiate();
     aggiornaPosizione();
   });
-  $('scelta-carreggiata').addEventListener('change', e => {
+  su('scelta-carreggiata', 'change', e => {
     carreggiata = e.target.value;
     carreggiataScelta = !!carreggiata;
     carreggiateInDisaccordo = false;
@@ -654,10 +678,10 @@ function collega() {
     e.target.classList.remove('proposta');
   });
 
-  $('b-vocale').addEventListener('click', alternaVocale);
-  $('b-salva').addEventListener('click', salva);
-  $('b-elimina').addEventListener('click', eliminaRilievo);
-  $('b-sincronizza').addEventListener('click', provaSincronizzare);
+  su('b-vocale', 'click', alternaVocale);
+  su('b-salva', 'click', salva);
+  su('b-elimina', 'click', eliminaRilievo);
+  su('b-sincronizza', 'click', provaSincronizzare);
   allaRete(provaSincronizzare);
 }
 
@@ -690,20 +714,38 @@ async function apriApp() {
     return;
   }
   const sel = $('scelta-strada');
-  [...new Set(linee.map(l => l.strada))].sort()
-    .forEach(s => sel.add(new Option(s, s)));
-  sel.value = tratta;
+  if (sel) {
+    [...new Set(linee.map(l => l.strada))].sort()
+      .forEach(s => sel.add(new Option(s, s)));
+    sel.value = tratta;
+  }
   riempiCarreggiate();
 
-  seguiPosizione();
-  aggiornaCoda();
-  provaSincronizzare();
+  try {
+    seguiPosizione();
+    aggiornaCoda();
+    provaSincronizzare();
+  } catch (e) {
+    avvisa('Avvio incompleto: ' + String(e.message || e), 'male');
+  }
 }
 
 async function avvia() {
-  collega();
+  // L'accesso per primo: se piu avanti qualcosa va storto, almeno si entra.
   $('modulo-accesso').addEventListener('submit', accedi);
-  $('b-esci').addEventListener('click', async () => {
+
+  try {
+    collega();
+  } catch (e) {
+    avvisa('Qualcosa non si e collegato: ' + String(e.message || e), 'male');
+  }
+  if (mancanti.length) {
+    // pagina e codice non sono della stessa versione: succede dopo un
+    // aggiornamento, e si risolve da solo alla prossima apertura
+    avvisa('App aggiornata a meta: chiudila e riaprila');
+  }
+
+  su('b-esci', 'click', async () => {
     const rimasti = (await inCoda()).filter(r => r.stato !== 'inviato').length;
     if (rimasti && !confirm(
       `Ci sono ${rimasti} rilievi non ancora inviati. Uscendo restano sul telefono `

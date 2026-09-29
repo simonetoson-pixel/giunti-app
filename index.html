@@ -18,7 +18,10 @@
     <img src="icona.svg" alt="" class="marchio">
     <h1>Giunti</h1>
     <p class="occhiello">Rilievo dei giunti di dilatazione</p>
-    <form id="modulo-accesso">
+    <!-- return false: se il codice dell'app non parte, questo modulo non
+         deve essere inviato al server come una pagina qualunque — la
+         password finirebbe scritta nell'indirizzo e nella cronologia. -->
+    <form id="modulo-accesso" onsubmit="return false">
       <input type="email" id="email" placeholder="Email" autocomplete="username"
              inputmode="email" required>
       <input type="password" id="password" placeholder="Password"
