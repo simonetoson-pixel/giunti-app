@@ -96,10 +96,16 @@ export async function chiama(percorso, opzioni = {}) {
   return r;
 }
 
+// x-upsert: se il file c'e' gia lo sovrascrive invece di rifiutarlo. Serve
+// perche' l'invio puo interrompersi dopo aver caricato un file: al tentativo
+// dopo si ricarica lo stesso, e un "esiste gia" lo bloccherebbe per sempre.
 export async function caricaFile(bucket, nome, blob) {
   await chiama(`/storage/v1/object/${bucket}/${nome}`, {
     method: 'POST', body: blob,
-    headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+    headers: {
+      'Content-Type': blob.type || 'application/octet-stream',
+      'x-upsert': 'true',
+    },
   });
   return nome;
 }
@@ -125,6 +131,19 @@ export async function inserisci(tabella, riga) {
   const r = await chiama(`/rest/v1/${tabella}`, {
     method: 'POST', body: JSON.stringify(riga),
     headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+  });
+  return (await r.json())[0];
+}
+
+// Inserisce la riga, o la aggiorna se c'e' gia (stessa chiave). E' quello che
+// rende l'invio ripetibile: un rilievo mandato a meta si puo rimandare.
+export async function scrivi(tabella, riga, chiave) {
+  const r = await chiama(`/rest/v1/${tabella}?on_conflict=${chiave}`, {
+    method: 'POST', body: JSON.stringify(riga),
+    headers: {
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
   });
   return (await r.json())[0];
 }

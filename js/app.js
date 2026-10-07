@@ -84,7 +84,7 @@ function avvisa(testo, tipo = '') {
   a.textContent = testo;
   a.className = `avviso visibile ${tipo}`;
   clearTimeout(timerAvviso);
-  timerAvviso = setTimeout(() => a.classList.remove('visibile'), 3200);
+  timerAvviso = setTimeout(() => a.classList.remove('visibile'), tipo === 'male' ? 7000 : 3200);
 }
 
 // ----------------------------------------------------------------- dati
@@ -408,9 +408,11 @@ function disegnaRilievo() {
 
   if (!l) {
     $('r-opera').textContent = 'Nessuna linea scelta';
-    $('r-dettaglio').textContent = posizione
-      ? 'Nessun giunto abbastanza vicino: scegli tu quale'
-      : 'Posizione non disponibile: scegli tu la linea';
+    $('r-dettaglio').textContent = rilievo.esistente
+      ? 'La linea di questo rilievo non esiste più (chilometrica corretta): scegli quella giusta'
+      : posizione
+        ? 'Nessun giunto abbastanza vicino: scegli tu quale'
+        : 'Posizione non disponibile: scegli tu la linea';
     $('colori').innerHTML = '';
     $('corsie').innerHTML = '';
     return;
@@ -623,39 +625,72 @@ async function eliminaRilievo() {
 }
 
 // ------------------------------------------------------------- la coda
-function quando(r) {
-  if (r.stato !== 'inviato') return 'da inviare';
-  const d = new Date(r.modificato_il || r.creato_il);
-  const oggi = new Date().toISOString().slice(0, 10);
-  return d.toISOString().slice(0, 10) === oggi
-    ? d.toTimeString().slice(0, 5)
-    : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+// Il giorno in cui si e' lavorato, come lo si dice a voce.
+function nomeGiorno(d) {
+  const chiave = x => x.toLocaleDateString('sv-SE');          // aaaa-mm-gg, ora locale
+  const ieri = new Date(Date.now() - 86400000);
+  if (chiave(d) === chiave(new Date())) return 'Oggi';
+  if (chiave(d) === chiave(ieri)) return 'Ieri';
+  return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// A che punto e' un rilievo: partito, in attesa, o bloccato (e perche' si
+// vede sotto il conteggio).
+function stato(r) {
+  if (r.stato === 'inviato') return { testo: '✓', classe: 'inviato' };
+  if (r.errore) return { testo: '⚠ bloccato', classe: 'bloccato' };
+  return { testo: 'da inviare', classe: 'attesa' };
 }
 
 async function aggiornaCoda() {
   const tutti = await inCoda();
   const attesa = tutti.filter(r => r.stato !== 'inviato');
+  // se qualcuno e' bloccato si dice perche', una volta sola per motivo
+  const motivi = [...new Set(attesa.map(r => r.errore).filter(Boolean))];
   $('coda-testo').innerHTML = attesa.length
     ? `<b>${attesa.length}</b> rilievi da inviare`
+      + motivi.map(m => `<small class="errore-coda">${m}</small>`).join('')
     : 'Tutto sincronizzato';
   $('b-sincronizza').hidden = attesa.length === 0;
 
-  const recenti = tutti
-    .sort((a, b) => (b.modificato_il || b.creato_il).localeCompare(a.modificato_il || a.creato_il))
-    .slice(0, 3);
-  $('recenti').innerHTML = recenti.map(r => `
-    <button class="recente" data-id="${r.id}" type="button">
+  // Tutti i rilievi, dal piu recente, raggruppati per giorno: quando si lavora
+  // si fanno decine di scatti in successione e serve rivederli uno dopo l'altro,
+  // non solo gli ultimi tre.
+  const quando = r => new Date(r.modificato_il || r.creato_il);
+  const ordinati = tutti.slice().sort((a, b) => quando(b) - quando(a));
+  let giornoPrima = null, html = '';
+  for (const r of ordinati) {
+    const d = quando(r);
+    const giorno = nomeGiorno(d);
+    if (giorno !== giornoPrima) {
+      html += `<div class="giorno">${giorno}</div>`;
+      giornoPrima = giorno;
+    }
+    const foto = (r.foto ? r.foto.length : 0) + (r.foto_caricate || 0);
+    const dettaglio = [
+      r.carreggiata,
+      d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+      foto ? `${foto} foto` : null,
+    ].filter(Boolean).join(' · ');
+    const st = stato(r);
+    html += `<button class="recente" data-id="${r.id}" type="button">
       <span class="pallino" style="background:${COLORE(r.colore)}"></span>
-      <span class="nome">${r.etichetta || r.linea_id}</span>
-      <span class="quando">${quando(r)}</span>
+      <span class="testo"><span class="nome">${r.etichetta || r.linea_id}</span>
+        <span class="dettaglio">${dettaglio}</span></span>
+      <span class="stato ${st.classe}">${st.testo}</span>
       <span class="apri">›</span>
-    </button>`).join('');
+    </button>`;
+  }
+  $('recenti').innerHTML = html;
 }
 
 async function provaSincronizzare() {
-  const { inviati, rimasti } = await sincronizza();
-  if (inviati) avvisa(`${inviati} rilievi inviati`, 'buono');
+  const { inviati, rimasti, errore } = await sincronizza();
+  if (inviati && !rimasti) avvisa(`${inviati} rilievi inviati`, 'buono');
+  else if (inviati) avvisa(`${inviati} inviati, ${rimasti} no: ${errore}`, 'male');
   else if (rimasti && !navigator.onLine) avvisa('Nessuna rete: restano in attesa');
+  // prima non diceva niente: "6 da inviare" e il pulsante che non faceva nulla
+  else if (rimasti && errore) avvisa(`Non riesco a inviare: ${errore}`, 'male');
   aggiornaCoda();
 }
 

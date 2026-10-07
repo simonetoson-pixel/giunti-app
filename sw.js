@@ -1,7 +1,7 @@
 // Service worker: tiene in cache l'app e l'elenco dei giunti, perché in
 // corsia d'emergenza deve aprirsi anche senza rete.
 
-const CACHE = 'giunti-v5';
+const CACHE = 'giunti-v6';
 const FILE = [
   './', './index.html', './stile.css', './manifest.json',
   './js/app.js', './js/vicini.js', './js/coda.js',

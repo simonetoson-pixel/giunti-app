@@ -35,6 +35,11 @@ body { display: flex; flex-direction: column; }
 /* ------------------------------------------------------------- schermate */
 .schermata { display: none; flex-direction: column; flex: 1; min-height: 0; }
 .schermata.attiva { display: flex; }
+/* La schermata di scatto scorre: sotto il pulsante c'e' l'elenco di tutti i
+   rilievi, e quando sono decine non stanno in uno schermo. Le tre parti
+   (fascia, pulsante, elenco) non devono schiacciarsi per farci stare tutto. */
+#s-scatto.attiva { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#s-scatto > * { flex: none; }
 
 /* ------------------------------------------------------- striscia in alto */
 .posizione {
@@ -75,7 +80,10 @@ body { display: flex; flex-direction: column; }
 /* Il pulsante sta in basso, dove arriva il pollice tenendo il telefono in una
    mano sola: chi scatta è fermo in corsia d'emergenza e ha fretta. */
 .centro {
-  flex: 1; display: flex; flex-direction: column;
+  /* alto abbastanza da tenere il pulsante dove arriva il pollice, e da
+     lasciare in vista l'inizio dell'elenco: il resto si raggiunge scorrendo */
+  min-height: 56vh; min-height: 56dvh;
+  display: flex; flex-direction: column;
   align-items: center; justify-content: flex-end; gap: 18px;
   padding: 24px 24px 10px;
 }
@@ -101,6 +109,8 @@ body { display: flex; flex-direction: column; }
   color: var(--tenue); margin-bottom: 8px;
 }
 .coda b { color: var(--inchiostro); }
+/* perche' un rilievo non parte: in rosso, sotto il conteggio */
+.coda .errore-coda { display: block; color: var(--allarme); font-size: 12px; line-height: 1.3; margin-top: 2px; }
 .coda button {
   margin-left: auto; font: inherit; font-size: 13px; padding: 5px 12px;
   border: 1px solid var(--linea); background: var(--sfondo);
@@ -108,15 +118,25 @@ body { display: flex; flex-direction: column; }
 }
 /* I rilievi recenti si riaprono: si fotografa in emergenza e si compila
    all'area di servizio. */
-.recenti { display: flex; flex-direction: column; gap: 2px; }
+.recenti { display: flex; flex-direction: column; }
+.giorno {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--tenue); padding: 12px 4px 4px;
+}
+.giorno:first-child { padding-top: 2px; }
 .recente {
-  display: flex; align-items: center; gap: 9px; font-size: 13px; width: 100%;
+  display: flex; align-items: center; gap: 10px; font-size: 14px; width: 100%;
   background: none; border: none; font-family: inherit; color: var(--inchiostro);
-  padding: 7px 4px; text-align: left; border-radius: 8px;
+  padding: 9px 4px; text-align: left; border-radius: 8px;
+  border-bottom: 1px solid var(--sfondo);
 }
 .recente:active { background: var(--sfondo); }
-.recente .nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.recente .quando { color: var(--tenue); font-size: 11.5px; white-space: nowrap; }
+.recente .testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.recente .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.recente .dettaglio { color: var(--tenue); font-size: 12px; }
+.recente .stato { font-size: 11.5px; white-space: nowrap; color: var(--tenue); }
+.recente .stato.inviato { color: var(--sicuro); font-size: 14px; }
+.recente .stato.bloccato { color: var(--allarme); font-weight: 600; }
 .recente .apri { color: var(--accento); font-size: 15px; }
 .pallino { width: 11px; height: 11px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.2); }
 

@@ -15,7 +15,7 @@
 // rilievo inviato mesi fa non richiede di sapere cosa era già partito, e non
 // si tiene sul telefono una seconda copia di quello che è già al sicuro.
 
-import { caricaFile, inserisci, modifica, cancella, cancellaFile, leggi } from './rete.js';
+import { caricaFile, inserisci, scrivi, cancella, cancellaFile, leggi } from './rete.js';
 
 const DB = 'giunti', VERSIONE = 1, MAGAZZINO = 'coda';
 
@@ -135,8 +135,24 @@ function riga(r) {
   };
 }
 
-// Invia un rilievo: prima i file, poi le righe. Se qualcosa va storto il
-// rilievo resta in coda e ci si riprova, senza perdere niente.
+// Perche' un invio e' fallito, detto in modo che si capisca.
+//
+// Prima il rilievo restava in coda in silenzio: "6 da inviare" e il pulsante
+// che non faceva niente, senza dire il motivo.
+function spiega(e) {
+  const t = String((e && e.message) || e);
+  if (/Failed to fetch|Load failed|NetworkError|network/i.test(t)) return 'rete assente o instabile';
+  if (/23503|foreign key/i.test(t)) return 'la linea di questo rilievo non esiste più: aprilo e scegli quella giusta';
+  if (/^40[13]|JWT|42501|row-level security/i.test(t)) return 'accesso scaduto: esci e rientra';
+  return t.replace(/\s+/g, ' ').slice(0, 140);
+}
+
+// Invia un rilievo. Si puo ripetere quante volte serve, anche se un tentativo
+// precedente si e' fermato a meta: ogni passo sovrascrive invece di rifiutare.
+//
+// Prima la riga del rilievo si inseriva e basta, e se il segnale cadeva
+// mentre si caricavano le foto il tentativo dopo la reinseriva: il server
+// rispondeva "esiste gia" e quel rilievo non partiva mai piu.
 async function invia(r) {
   const cartella = `${r.linea_id.replace(/[^\w-]/g, '_')}/${r.id}`;
   const campi = riga(r);
@@ -148,37 +164,42 @@ async function invia(r) {
     campi.audio_path = await caricaFile('audio', `${cartella}.${estensione}`, r.audio);
   }
 
-  if (r.inviato_il) {
-    await modifica('rilievi', `id=eq.${r.id}`, campi);
-  } else {
-    await inserisci('rilievi', { id: r.id, ...campi });
-  }
+  await scrivi('rilievi', { id: r.id, ...campi }, 'id');
 
-  // le foto già sul server non si ricaricano: si numerano da dove si era
+  // Le foto gia arrivate non si riscrivono: le righe che ci sono gia si
+  // riconoscono dal percorso, e i file (stesso nome) si sovrascrivono.
+  const presenti = new Set(
+    (await leggi(`foto?rilievo_id=eq.${r.id}&select=path`)).map(f => f.path));
   const partenza = r.foto_caricate || 0;
   for (let i = 0; i < (r.foto || []).length; i++) {
-    const path = await caricaFile('foto', `${cartella}-${partenza + i + 1}.jpg`, r.foto[i]);
-    await inserisci('foto', {
-      rilievo_id: r.id, path,
-      scattata_il: r.creato_il, lat: r.lat ?? null, lon: r.lon ?? null,
-    });
+    const nome = `${cartella}-${partenza + i + 1}.jpg`;
+    await caricaFile('foto', nome, r.foto[i]);
+    if (!presenti.has(nome)) {
+      await inserisci('foto', {
+        rilievo_id: r.id, path: nome,
+        scattata_il: r.creato_il, lat: r.lat ?? null, lon: r.lon ?? null,
+      });
+    }
   }
 }
 
-// Prova a svuotare la coda. Restituisce quanti ne ha inviati e quanti no.
+// Prova a svuotare la coda. Restituisce quanti ne ha inviati, quanti restano
+// e, se qualcuno e' rimasto, perche'.
 export async function sincronizza() {
   if (!navigator.onLine) return { inviati: 0, rimasti: (await daSincronizzare()).length };
-  let inviati = 0;
+  let inviati = 0, errore = null;
   for (const r of await daSincronizzare()) {
     try {
       await invia(r);
       await segna(r.id, 'inviato');
       inviati++;
     } catch (e) {
-      await segna(r.id, 'in_attesa', String(e.message || e));
+      const motivo = spiega(e);
+      errore = errore || motivo;
+      await segna(r.id, 'in_attesa', motivo);
     }
   }
-  return { inviati, rimasti: (await daSincronizzare()).length };
+  return { inviati, rimasti: (await daSincronizzare()).length, errore };
 }
 
 export function allaRete(fn) {
