@@ -3,7 +3,7 @@
 
 // Alzare insieme a VERSIONE in js/app.js: e' il numero che l'app mostra in
 // fondo, e serve a capire a colpo d'occhio quale versione sta girando.
-const CACHE = 'giunti-v7';
+const CACHE = 'giunti-v8';
 const FILE = [
   './', './index.html', './stile.css', './manifest.json',
   './js/app.js', './js/vicini.js', './js/coda.js',

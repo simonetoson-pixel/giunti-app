@@ -42,6 +42,11 @@ function scrivi(id, testo) {
 const schermate = ['s-accesso', 's-scatto', 's-rilievo', 's-scelta'];
 const mostra = id => {
   schermate.forEach(s => $(s).classList.toggle('attiva', s === id));
+  // si apre sempre dall'alto: con lo scorrimento rimasto da prima, la fascia che
+  // dice il ponte o il blocco "linea di giunto" restavano fuori schermo
+  if (id === 's-scatto') $('s-scatto').scrollTop = 0;
+  const corpo = document.querySelector('#s-rilievo .corpo');
+  if (id === 's-rilievo' && corpo) corpo.scrollTop = 0;
   // un aggiornamento in attesa si applica quando non si sta compilando niente
   if (id === 's-scatto' || id === 's-accesso') applicaAggiornamento();
 };
@@ -49,7 +54,7 @@ const mostra = id => {
 // Il numero della versione, scritto in fondo alla schermata: se non e' quello
 // atteso, il telefono sta ancora usando la copia vecchia. Alzarlo insieme a
 // CACHE in sw.js.
-const VERSIONE = 7;
+const VERSIONE = 8;
 
 // Quando arriva una versione nuova l'app si ricarica da sola, ma solo se non
 // si sta compilando un rilievo: in quel caso aspetta che si torni allo scatto,
@@ -76,11 +81,24 @@ const ROTTA_VALIDA_MS = 3 * 60 * 1000;
 // distanza non le distingue, e nessun calcolo puo farlo: lo sa solo chi guida.
 const TRATTA = 'giunti-tratta';
 const CARREGGIATA = 'giunti-carreggiata';
-let tratta = localStorage.getItem(TRATTA) || '';
-let carreggiata = localStorage.getItem(CARREGGIATA) || '';
+const SCELTA_IL = 'giunti-scelta-il';
+
+// La scelta vale per una giornata di lavoro, non per sempre. Prima restava
+// salvata finche' non la si cambiava: la sera sull'A31, la mattina dopo sull'A4
+// l'app guardava ancora solo l'A31 — nessuna linea vicina, e anche l'elenco per
+// scegliere a mano mostrava solo l'A31 — senza dire perche'.
+const VALIDITA_SCELTA_MS = 4 * 60 * 60 * 1000;
+const sceltaValida = () => Date.now() - (+localStorage.getItem(SCELTA_IL) || 0) < VALIDITA_SCELTA_MS;
+const ricordaScelta = () => localStorage.setItem(SCELTA_IL, String(Date.now()));
+
+let tratta = sceltaValida() ? (localStorage.getItem(TRATTA) || '') : '';
+let carreggiata = sceltaValida() ? (localStorage.getItem(CARREGGIATA) || '') : '';
 // Se l'ha scelta lui non si tocca piu: chi guida ne sa piu di qualsiasi
 // calcolo. Se invece l'ha proposta l'app, ogni nuova posizione la rivede.
-let carreggiataScelta = localStorage.getItem(CARREGGIATA + '-scelta') === '1';
+let carreggiataScelta = sceltaValida() && localStorage.getItem(CARREGGIATA + '-scelta') === '1';
+// Se sulla tratta scelta non c'e niente vicino ma su un'altra si, quale:
+// quasi sempre vuol dire che la tratta scelta e' rimasta quella di ieri.
+let altraTratta = null;
 let carreggiateInDisaccordo = false;
 
 function candidate() {
@@ -156,6 +174,16 @@ function aggiornaPosizione() {
   // lo stesso, perché serve a orientarsi, ma detta per quello che è.
   if (fiducia === 'incerta') {
     rivale = null;
+    // Sulla tratta scelta non c'e niente, ma su un'altra si? Non si cambia da
+    // soli — due strade affiancate sono proprio il caso in cui la posizione non
+    // basta — ma lo si dice, con un tocco per passare.
+    altraTratta = null;
+    if (tratta) {
+      const t = vicine(linee, posizione.lat, posizione.lon, 1)[0];
+      if (t && t.linea.strada !== tratta
+          && affidabilita(t.distanza, posizione.precisione) !== 'incerta') altraTratta = t;
+    }
+    mostraAltraTratta();
     proponiCarreggiata();
     if ($('posizione')) $('posizione').className = 'posizione lontano';
     scrivi('dove', 'Nessun giunto qui vicino');
@@ -169,6 +197,8 @@ function aggiornaPosizione() {
   // vicino, la posizione da sola non basta a decidere
   rivale = trovate.find(t => t.linea.strada !== proposta.linea.strada
                              && t.distanza < proposta.distanza + 120) || null;
+  altraTratta = null;
+  mostraAltraTratta();
   proponiCarreggiata();
 
   if ($('posizione')) $('posizione').className = 'posizione';
@@ -176,6 +206,38 @@ function aggiornaPosizione() {
   scrivi('opera-vicina', `${proposta.linea.strada} · km ${proposta.linea.km}`);
   scrivi('segnale', `${distanzaLeggibile(proposta.distanza)} · ${gps}`
     + (carreggiateInDisaccordo ? ' · carreggiata da confermare' : ''));
+}
+
+// Il pulsante che dice "sei vicino a X: passa a quella tratta". Si crea qui
+// invece che nell'HTML: cosi funziona anche se la pagina e quella di ieri.
+function mostraAltraTratta() {
+  let b = $('b-altra-tratta');
+  if (!altraTratta) { if (b) b.remove(); return; }
+  const fascia = $('posizione');
+  if (!fascia) return;
+  if (!b) {
+    b = document.createElement('button');
+    b.id = 'b-altra-tratta';
+    b.type = 'button';
+    b.className = 'altra-tratta';
+    b.addEventListener('click', passaAllaTratta);
+    fascia.insertBefore(b, fascia.querySelector('.scelte'));
+  }
+  const l = altraTratta.linea;
+  b.innerHTML = `Sei vicino a <b>${l.opera || l.strada}</b> (${l.strada}), non all'${tratta}.
+    <span>Tocca per passare a ${l.strada}</span>`;
+}
+
+function passaAllaTratta() {
+  if (!altraTratta) return;
+  tratta = altraTratta.linea.strada;
+  localStorage.setItem(TRATTA, tratta);
+  ricordaScelta();
+  if ($('scelta-strada')) $('scelta-strada').value = tratta;
+  altraTratta = null;
+  mostraAltraTratta();
+  riempiCarreggiate();
+  aggiornaPosizione();
 }
 
 // Su quale carreggiata si sta. Due indizi indipendenti:
@@ -416,7 +478,10 @@ function disegnaRilievo() {
   // foto in ufficio non si distinguerebbe l'andata dal ritorno.
   const attiva = l ? carreggiataAttiva(l) : null;
   const manca = !l ? 'SCEGLI PRIMA LA LINEA' : (!attiva ? 'SCEGLI LA CARREGGIATA' : null);
-  $('b-salva').disabled = !!manca;
+  // Non e' spento: un pulsante grigio che dice "scegli la linea" e non fa
+  // niente lascia li. Toccandolo si va a sceglierla.
+  $('b-salva').disabled = false;
+  $('b-salva').classList.toggle('incompleto', !!manca);
   $('b-salva').textContent = manca
     || (rilievo.esistente ? 'SALVA LE MODIFICHE' : 'SALVA RILIEVO');
   $('b-elimina').hidden = !rilievo.esistente;
@@ -431,8 +496,10 @@ function disegnaRilievo() {
         : 'Posizione non disponibile: scegli tu la linea';
     $('colori').innerHTML = '';
     $('corsie').innerHTML = '';
+    mostraSuggerita();
     return;
   }
+  mostraSuggerita();
 
   $('r-opera').textContent = l.opera || 'Opera non indicata';
   const dist = proposta && proposta.linea.id === l.id && !rilievo.esistente
@@ -499,11 +566,37 @@ function disegnaRilievo() {
   $('corsie').innerHTML = html;
 }
 
+// Nella schermata del rilievo, senza linea: "sei vicino a X su un'altra tratta".
+function mostraSuggerita() {
+  const vecchia = document.querySelector('.suggerita');
+  if (vecchia) vecchia.remove();
+  if (rilievo.linea || rilievo.esistente || !altraTratta) return;
+  const l = altraTratta.linea;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'suggerita';
+  b.innerHTML = `Sei vicino a <b>${l.opera || l.strada}</b> · ${l.strada} km ${l.km}
+    <span>Tocca per usare questa linea e passare a ${l.strada}</span>`;
+  b.addEventListener('click', () => {
+    const linea = altraTratta.linea;
+    passaAllaTratta();
+    rilievo.linea = linea;
+    rilievo.linea_id = linea.id;
+    rilievo.stati = statiIniziali(linea);
+    disegnaRilievo();
+  });
+  document.querySelector('.linea-scelta').after(b);
+}
+
 // ------------------------------------------------------- scelta manuale
 function disegnaElenco(filtro = '') {
   const testo = filtro.trim().toLowerCase();
   let elenco;
-  const insieme = candidate();
+  // Tutte le linee, dalla piu vicina: la tratta scelta serve a riconoscere
+  // quella giusta fra due strade affiancate, non a nascondere le altre. Prima
+  // l'elenco mostrava solo la tratta scelta, e con quella sbagliata la linea
+  // che si cercava non c'era.
+  const insieme = (!posizione && !testo && tratta) ? candidate() : linee;
   if (testo) {
     elenco = insieme
       .filter(l => `${l.opera} ${l.strada} ${l.km}`.toLowerCase().includes(testo))
@@ -574,7 +667,18 @@ function posizioneAdesso() {
   });
 }
 
+function apriScelta() {
+  $('cerca').value = '';
+  disegnaElenco();
+  mostra('s-scelta');
+}
+
 async function salva() {
+  if (!rilievo.linea) return apriScelta();
+  if (!carreggiataAttiva(rilievo.linea)) {
+    $('corsie').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return avvisa('Scegli su quale carreggiata ti trovi');
+  }
   $('b-salva').disabled = true;
   rilievo.nota = $('nota').value.trim();
 
@@ -664,7 +768,7 @@ async function aggiornaCoda() {
   // se qualcuno e' bloccato si dice perche', una volta sola per motivo
   const motivi = [...new Set(attesa.map(r => r.errore).filter(Boolean))];
   $('coda-testo').innerHTML = attesa.length
-    ? `<b>${attesa.length}</b> rilievi da inviare`
+    ? `<b>${attesa.length}</b> ${attesa.length === 1 ? 'rilievo' : 'rilievi'} da inviare`
       + motivi.map(m => `<small class="errore-coda">${m}</small>`).join('')
     : 'Tutto sincronizzato';
   $('b-sincronizza').hidden = attesa.length === 0;
@@ -763,11 +867,7 @@ function collega() {
     disegnaRilievo();
   });
 
-  su('b-cambia', 'click', () => {
-    $('cerca').value = '';
-    disegnaElenco();
-    mostra('s-scelta');
-  });
+  su('b-cambia', 'click', apriScelta);
   su('b-indietro', 'click', () => mostra('s-rilievo'));
   su('cerca', 'input', e => disegnaElenco(e.target.value));
   su('elenco', 'click', e => {
@@ -789,6 +889,7 @@ function collega() {
   su('scelta-strada', 'change', e => {
     tratta = e.target.value;
     localStorage.setItem(TRATTA, tratta);
+    ricordaScelta();
     riempiCarreggiate();
     aggiornaPosizione();
   });
@@ -798,6 +899,7 @@ function collega() {
     carreggiateInDisaccordo = false;
     localStorage.setItem(CARREGGIATA, carreggiata);
     localStorage.setItem(CARREGGIATA + '-scelta', carreggiataScelta ? '1' : '');
+    ricordaScelta();
     e.target.classList.remove('proposta');
   });
 

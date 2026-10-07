@@ -44,7 +44,7 @@ body { display: flex; flex-direction: column; }
 /* ------------------------------------------------------- striscia in alto */
 .posizione {
   background: var(--accento); color: #fff;
-  padding: 10px 16px calc(10px + env(safe-area-inset-top)) 16px;
+  padding: 10px 16px 10px 16px;
   padding-top: calc(10px + env(safe-area-inset-top));
   display: flex; flex-direction: column; gap: 2px;
 }
@@ -279,6 +279,23 @@ textarea {
   background: var(--accento); color: #fff; font: inherit; font-size: 17px; font-weight: 700;
 }
 .salva:disabled { opacity: .5 }
+/* mancano linea o carreggiata: si vede, ma il pulsante resta toccabile e porta li */
+.salva.incompleto { background: var(--tenue); }
+
+/* "sei vicino a X su un'altra tratta" */
+.altra-tratta, .suggerita {
+  display: block; width: 100%; text-align: left; font: inherit; font-size: 14px;
+  line-height: 1.35; border-radius: 10px; padding: 10px 12px; margin: 8px 0 2px;
+}
+.altra-tratta {
+  background: #FFE9A8; color: #3d3000; border: 2px solid #D9B45A;
+}
+.suggerita {
+  background: #FBF0D8; color: #4d3d08; border: 2px solid #D9B45A; margin: 10px 0 0;
+}
+.altra-tratta span, .suggerita span {
+  display: block; font-weight: 700; margin-top: 2px;
+}
 
 /* ------------------------------------------------------- scelta della linea */
 .elenco { flex: 1; overflow-y: auto; }
@@ -289,7 +306,10 @@ textarea {
 }
 .voce .testo { flex: 1; min-width: 0; }
 .voce .nome { font-weight: 600; font-size: 15.5px; }
-.voce .dettaglio { font-size: 12.5px; color: var(--tenue); }
+.voce .testo > span { display: block; }
+/* la strada va letta: accanto all'A4 corre la tangenziale, e le due righe
+   hanno lo stesso nome di ponte */
+.voce .dettaglio { font-size: 13.5px; color: var(--inchiostro); font-weight: 500; }
 .voce .distanza { font-size: 13px; color: var(--tenue); white-space: nowrap; }
 .cerca {
   width: 100%; border: none; border-bottom: 1px solid var(--linea);
