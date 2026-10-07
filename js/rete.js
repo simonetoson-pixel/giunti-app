@@ -127,6 +127,28 @@ export async function leggi(percorso) {
   return (await chiama(`/rest/v1/${percorso}`)).json();
 }
 
+// Legge tutte le righe, a pagine.
+//
+// Il database ne restituisce al massimo 1000 per richiesta, e lo fa in silenzio:
+// niente errore, solo meno righe. Le corsie sono 1257, quindi sull'archivio da
+// scrivania ogni carreggiata mostrava solo le prime due corsie. Qui si chiede
+// a pagine finche' ne arriva meno del pieno.
+//
+// Il percorso deve avere un ORDER completo (le chiavi che bastano a distinguere
+// due righe), altrimenti fra una pagina e l'altra le righe possono ripetersi o
+// saltare.
+export async function leggiTutto(percorso, pagina = 1000) {
+  const tutte = [];
+  for (let da = 0; ; da += pagina) {
+    const r = await chiama(`/rest/v1/${percorso}`, {
+      headers: { Range: `${da}-${da + pagina - 1}`, 'Range-Unit': 'items' },
+    });
+    const righe = await r.json();
+    tutte.push(...righe);
+    if (righe.length < pagina) return tutte;
+  }
+}
+
 export async function inserisci(tabella, riga) {
   const r = await chiama(`/rest/v1/${tabella}`, {
     method: 'POST', body: JSON.stringify(riga),

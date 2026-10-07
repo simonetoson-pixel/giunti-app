@@ -10,7 +10,7 @@
 //   - i rilievi sul campo, che non correggono niente: raccontano com'era
 //     quel giorno, e restano tutti.
 
-import { leggi, chiama } from './rete.js';
+import { leggi, leggiTutto, chiama } from './rete.js';
 
 export const STATI = ['cattive', 'attenzionare', 'buone_datate', 'ottime'];
 export const NOMI_STATO = {
@@ -32,41 +32,41 @@ export const dati = {
 
 // ------------------------------------------------------------- caricamento
 async function forse(percorso, seNo = []) {
-  try { return await leggi(percorso); } catch { return seNo; }
+  try { return await leggiTutto(percorso); } catch { return seNo; }
 }
 
 export async function carica() {
   const [linee, posizioni] = await Promise.all([
-    leggi('linee?select=id,strada,km,km_m,opera,lat,lon&order=strada,km_m'),
-    forse('posizioni?select=linea_id,lat,lon'),
+    leggiTutto('linee?select=id,strada,km,km_m,opera,lat,lon&order=strada,km_m,id'),
+    forse('posizioni?select=linea_id,lat,lon&order=linea_id'),
   ]);
 
   // le viste esistono solo dopo aver lanciato scripts/ufficio.sql: finché non
   // ci sono si legge il censimento nudo, e l'app funziona lo stesso
   let giunti = await forse('giunti_correnti?select=id,linea_id,carreggiata,ordine,'
-    + 'doppio_senso,km,modello,anno,note,corretto&order=ordine', null);
+    + 'doppio_senso,km,modello,anno,note,corretto&order=id', null);
   dati.conCorrezioni = giunti !== null;
   if (!giunti) {
-    giunti = await leggi('giunti?select=id,linea_id,carreggiata,ordine,'
-      + 'doppio_senso,km,modello,anno,note&order=ordine');
+    giunti = await leggiTutto('giunti?select=id,linea_id,carreggiata,ordine,'
+      + 'doppio_senso,km,modello,anno,note&order=id');
     giunti.forEach(g => { g.corretto = false; });
   }
 
   let corsie = dati.conCorrezioni
     ? await forse('corsie_correnti?select=giunto_id,posizione,corsia,stato,'
-      + 'stato_censimento,corretto&order=posizione', null)
+      + 'stato_censimento,corretto&order=giunto_id,posizione', null)
     : null;
   if (!corsie) {
-    corsie = await leggi('corsie?select=giunto_id,posizione,corsia,stato&order=posizione');
+    corsie = await leggiTutto('corsie?select=giunto_id,posizione,corsia,stato&order=giunto_id,posizione');
     corsie.forEach(c => { c.stato_censimento = c.stato; c.corretto = false; });
   }
 
   const [rilievi, commenti] = await Promise.all([
-    leggi('rilievi?select=id,linea_id,carreggiata,data,colore,nota,audio_path,'
+    leggiTutto('rilievi?select=id,linea_id,carreggiata,data,colore,nota,audio_path,'
       + 'lat,lon,creato_il,stati_corsie,foto(id,path,scattata_il)'
-      + '&order=data.desc,creato_il.desc'),
+      + '&order=data.desc,creato_il.desc,id'),
     forse('commenti?select=id,linea_id,giunto_id,testo,autore,creato_il'
-      + '&order=creato_il.desc'),
+      + '&order=creato_il.desc,id'),
   ]);
 
   // si rimonta l'albero: linea -> carreggiate -> corsie

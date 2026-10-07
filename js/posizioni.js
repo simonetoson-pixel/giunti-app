@@ -6,7 +6,7 @@
 // correzione viene salvata a parte — così un ricaricamento del censimento non
 // la porta via.
 
-import { autenticato, entra, leggi, chiama } from './rete.js';
+import { autenticato, entra, leggi, chiama, leggiTutto } from './rete.js';
 
 const $ = id => document.getElementById(id);
 let linee = [];            // censimento, con la posizione calcolata
@@ -182,8 +182,8 @@ async function apri() {
     s.classList.toggle('attiva', s.id === 's-lavoro'));
   preparaMappa();
 
-  linee = await leggi('linee?select=id,strada,km,km_m,opera,lat,lon&order=strada,km_m');
-  const righe = await leggi('posizioni?select=linea_id,lat,lon,scarto_m');
+  linee = await leggiTutto('linee?select=id,strada,km,km_m,opera,lat,lon&order=strada,km_m,id');
+  const righe = await leggiTutto('posizioni?select=linea_id,lat,lon,scarto_m&order=linea_id');
   corrette = Object.fromEntries(righe.map(r => [r.linea_id, r]));
 
   const strade = [...new Set(linee.map(l => l.strada))].sort();
