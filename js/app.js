@@ -40,8 +40,24 @@ function scrivi(id, testo) {
 }
 
 const schermate = ['s-accesso', 's-scatto', 's-rilievo', 's-scelta'];
-const mostra = id => schermate.forEach(s =>
-  $(s).classList.toggle('attiva', s === id));
+const mostra = id => {
+  schermate.forEach(s => $(s).classList.toggle('attiva', s === id));
+  // un aggiornamento in attesa si applica quando non si sta compilando niente
+  if (id === 's-scatto' || id === 's-accesso') applicaAggiornamento();
+};
+
+// Il numero della versione, scritto in fondo alla schermata: se non e' quello
+// atteso, il telefono sta ancora usando la copia vecchia. Alzarlo insieme a
+// CACHE in sw.js.
+const VERSIONE = 7;
+
+// Quando arriva una versione nuova l'app si ricarica da sola, ma solo se non
+// si sta compilando un rilievo: in quel caso aspetta che si torni allo scatto,
+// altrimenti si perderebbe quello che si sta scrivendo.
+let aggiornamentoPronto = false;
+function applicaAggiornamento() {
+  if (aggiornamentoPronto && !rilievo) location.reload();
+}
 
 let linee = [];
 let posizione = null;         // {lat, lon, precisione}
@@ -864,8 +880,19 @@ async function avvia() {
   if (autenticato()) await apriApp();
   else mostra('s-accesso');
 
+  scrivi('versione', `versione ${VERSIONE}`);
+
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // Alla prima installazione il controllo passa al service worker senza che
+    // ci sia niente da aggiornare; solo se ce n'era gia uno e' una versione nuova.
+    const avevaControllo = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!avevaControllo) return;
+      aggiornamentoPronto = true;
+      applicaAggiornamento();
+    });
+    // a ogni apertura si chiede se c'e' una versione nuova, senza aspettare
+    navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
   }
 }
 

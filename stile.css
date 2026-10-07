@@ -322,6 +322,7 @@ textarea {
 }
 .nota-accesso { margin: 22px 0 0; color: var(--tenue); font-size: 12.5px; line-height: 1.5; }
 
+.versione { text-align: center; font-size: 11px; color: var(--linea); margin-top: 2px; }
 .esci {
   display: block; margin: 12px auto 0; background: none; border: none;
   color: var(--tenue); font: inherit; font-size: 12px;
