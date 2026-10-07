@@ -278,7 +278,7 @@ async function apriRilievo(id) {
     carreggiata: r.carreggiata || null,
     data: r.data,
     colore: r.colore || null,
-    stati: r.stati_corsie || [],
+    stati: [],
     nota: r.nota || '',
     audio: r.audio || null,
     foto: r.foto || [],
@@ -289,7 +289,7 @@ async function apriRilievo(id) {
     inviato_il: r.inviato_il || null,
     esistente: true,
   };
-  if (!rilievo.stati.length && rilievo.linea) rilievo.stati = statiIniziali(rilievo.linea);
+  if (rilievo.linea) rilievo.stati = fondiStati(rilievo.linea, r.stati_corsie);
   $('nota').value = rilievo.nota;
   azzeraVocale(!!rilievo.audio);
   disegnaRilievo();
@@ -317,6 +317,47 @@ function statiIniziali(linea) {
     carreggiata: c.nome,
     corsie: c.corsie.map(([corsia, stato]) => ({ corsia, stato })),
   }));
+}
+
+// Un rilievo riaperto porta con sé gli stati della sola carreggiata rilevata:
+// si ripartiscono dal censimento e si sovrappongono quelli salvati, per nome
+// di carreggiata (mai per posizione: l'altra potrebbe non esserci).
+function fondiStati(linea, salvati) {
+  const base = statiIniziali(linea);
+  for (const s of salvati || []) {
+    const b = base.find(x => x.carreggiata === s.carreggiata);
+    if (b && Array.isArray(s.corsie) && s.corsie.length === b.corsie.length) b.corsie = s.corsie;
+  }
+  return base;
+}
+
+// Su quale carreggiata si sta rilevando, fra quelle che la linea ha davvero.
+//
+// Dopo lo scatto interessa una carreggiata sola: l'altra, sullo schermo, fa
+// solo confusione. Quindi: quella dichiarata, se la linea ce l'ha; altrimenti,
+// se la linea ha il giunto in una sola carreggiata (capita, i due lati di un
+// ponte possono essere strutture diverse), quella; altrimenti nessuna, e
+// bisogna sceglierla — non si tira a indovinare.
+function carreggiataAttiva(linea) {
+  const nomi = linea.carreggiate.map(c => c.nome);
+  if (rilievo.carreggiata && nomi.includes(rilievo.carreggiata)) return rilievo.carreggiata;
+  if (nomi.length === 1) return nomi[0];
+  return null;
+}
+
+// Come si disegnano le corsie sul telefono: l'emergenza sempre a destra.
+//
+// Si guida a destra, quindi chi rileva si ferma sempre in una corsia di
+// emergenza che ha alla propria destra, qualunque carreggiata sia. Nel
+// censimento le carreggiate sono disegnate come su una mappa, con l'emergenza
+// sul bordo esterno: a destra in est e nord, a sinistra in ovest e sud. Qui
+// si rovescia dove serve, riconoscendola dalla corsia E e non dal nome della
+// carreggiata. Solo la vista cambia: i dati restano come sono.
+function ordineVisivo(corsie) {
+  const indici = corsie.map((_, i) => i);
+  const n = corsie.length;
+  if (n > 1 && corsie[0].corsia === 'E' && corsie[n - 1].corsia !== 'E') indici.reverse();
+  return indici;
 }
 
 // Gli indirizzi temporanei delle foto vanno restituiti, altrimenti ogni
@@ -354,11 +395,14 @@ function disegnaFoto() {
 function disegnaRilievo() {
   const l = rilievo.linea;
 
-  // Finché non si sa a quale giunto appartiene, non si può salvare.
-  $('b-salva').disabled = !l;
-  $('b-salva').textContent = l
-    ? (rilievo.esistente ? 'SALVA LE MODIFICHE' : 'SALVA RILIEVO')
-    : 'SCEGLI PRIMA LA LINEA';
+  // Finché non si sa a quale giunto appartiene, non si può salvare. E se la
+  // linea ha due carreggiate, nemmeno finché non si sa quale: guardando la
+  // foto in ufficio non si distinguerebbe l'andata dal ritorno.
+  const attiva = l ? carreggiataAttiva(l) : null;
+  const manca = !l ? 'SCEGLI PRIMA LA LINEA' : (!attiva ? 'SCEGLI LA CARREGGIATA' : null);
+  $('b-salva').disabled = !!manca;
+  $('b-salva').textContent = manca
+    || (rilievo.esistente ? 'SALVA LE MODIFICHE' : 'SALVA RILIEVO');
   $('b-elimina').hidden = !rilievo.esistente;
   document.querySelector('.linea-scelta').classList.toggle('mancante', !l);
 
@@ -393,25 +437,48 @@ function disegnaRilievo() {
       <span class="macchia" style="background:${COLORE(s)}"></span>${NOMI_STATO[s]}
     </button>`).join('');
 
-  // La carreggiata fa parte del rilievo: senza, guardando la foto in ufficio
-  // non si sa se il giunto è quello di andata o quello di ritorno.
-  $('corsie').innerHTML = rilievo.stati.map((c, ic) => {
-    const info = l.carreggiate[ic] || {};
-    const meta = [info.modello, info.anno].filter(Boolean).join(' · ');
-    const sua = rilievo.carreggiata === c.carreggiata;
-    return `<div class="carreggiata${sua ? ' scelta' : ''}">
-      <div class="titolo">
-        <button class="segno-carreggiata" data-carr="${c.carreggiata}" type="button">
-          ${sua ? '●' : '○'} ${c.carreggiata}</button>
-        ${info.doppio_senso ? '<span>(doppio senso)</span>' : ''}
-        <span>${meta}</span></div>
-      <div class="strisce">${c.corsie.map((x, ix) => `
-        <button class="corsia" data-c="${ic}" data-i="${ix}" type="button"
-                style="background:${COLORE(x.stato)}">
-          ${x.corsia}<small>${x.stato ? NOMI_STATO[x.stato].split(' ')[0].toLowerCase() : '—'}</small>
-        </button>`).join('')}</div>
-    </div>`;
-  }).join('');
+  // Una carreggiata sola, quella su cui si sta rilevando. L'altra non si
+  // mostra: sul campo serve solo a sbagliare.
+  const nomi = l.carreggiate.map(c => c.nome);
+  let html = '';
+
+  if (nomi.length > 1) {
+    html += `<div class="scelta-carr" role="group" aria-label="Carreggiata">
+      ${nomi.map(n => `<button class="carr-btn${n === attiva ? ' attiva' : ''}"
+        data-carr="${n}" type="button">${n}</button>`).join('')}</div>`;
+  }
+
+  // se la carreggiata dichiarata non esiste su questa linea, si dice perché
+  // se ne vede un'altra
+  if (rilievo.carreggiata && !nomi.includes(rilievo.carreggiata) && attiva) {
+    html += `<p class="avviso-carr">Su questa linea il giunto c'è solo in
+      <b>${attiva}</b>: sei in ${rilievo.carreggiata}.</p>`;
+  }
+
+  if (!attiva) {
+    html += '<p class="scegli-carr">Su quale carreggiata ti trovi? Ti mostro solo quella.</p>';
+    $('corsie').innerHTML = html;
+    return;
+  }
+
+  const ic = rilievo.stati.findIndex(c => c.carreggiata === attiva);
+  const c = rilievo.stati[ic];
+  const info = l.carreggiate.find(x => x.nome === attiva) || {};
+  const meta = [info.modello, info.anno].filter(Boolean).join(' · ');
+  html += `<div class="carreggiata scelta">
+    <div class="titolo">
+      ${nomi.length === 1 ? `<b>${attiva}</b>` : ''}
+      ${info.doppio_senso ? '<span>(doppio senso)</span>' : ''}
+      <span>${meta}</span></div>
+    <div class="strisce">${ordineVisivo(c.corsie).map(ix => {
+    const x = c.corsie[ix];
+    return `<button class="corsia" data-c="${ic}" data-i="${ix}" type="button"
+              style="background:${COLORE(x.stato)}">
+        ${x.corsia}<small>${x.stato ? NOMI_STATO[x.stato].split(' ')[0].toLowerCase() : '—'}</small>
+      </button>`;
+  }).join('')}</div>
+  </div>`;
+  $('corsie').innerHTML = html;
 }
 
 // ------------------------------------------------------- scelta manuale
@@ -502,13 +569,19 @@ async function salva() {
     }
   }
 
+  // Si salva solo la carreggiata rilevata: gli stati dell'altra sono quelli
+  // del censimento, mai toccati, e scriverli come se fossero stati visti
+  // sul posto sarebbe dire una cosa che non e' successa.
+  const attiva = carreggiataAttiva(rilievo.linea);
   const record = {
     id: rilievo.id,
     linea_id: rilievo.linea_id,
-    carreggiata: rilievo.carreggiata || null,
+    carreggiata: attiva || rilievo.carreggiata || null,
     data: rilievo.data,
     colore: rilievo.colore,
-    stati_corsie: rilievo.stati,
+    stati_corsie: attiva
+      ? rilievo.stati.filter(c => c.carreggiata === attiva)
+      : rilievo.stati,
     nota: rilievo.nota || null,
     audio: rilievo.audio,
     foto: rilievo.foto,
@@ -626,10 +699,9 @@ function collega() {
   });
 
   su('corsie', 'click', e => {
-    const segno = e.target.closest('.segno-carreggiata');
-    if (segno) {
-      rilievo.carreggiata = rilievo.carreggiata === segno.dataset.carr
-        ? null : segno.dataset.carr;
+    const scelta = e.target.closest('.carr-btn');
+    if (scelta) {
+      rilievo.carreggiata = scelta.dataset.carr;
       return disegnaRilievo();
     }
     const b = e.target.closest('.corsia');

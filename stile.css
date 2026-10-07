@@ -43,10 +43,12 @@ body { display: flex; flex-direction: column; }
   padding-top: calc(10px + env(safe-area-inset-top));
   display: flex; flex-direction: column; gap: 2px;
 }
-.posizione .dove { font-size: 19px; font-weight: 600; }
-.posizione .opera { font-size: 13px; opacity: .92; }
+/* Il ponte che sta arrivando si legge guidando, con un'occhiata: per questo il
+   nome e' grande, e la chilometrica sotto leggibile senza strizzare gli occhi. */
+.posizione .dove { font-size: 23px; font-weight: 600; line-height: 1.2; }
+.posizione .opera { font-size: 16px; opacity: .95; }
 .posizione .segnale {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .07em; opacity: .8;
+  font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .85;
 }
 /* Dove due strade corrono affiancate — l'A4 e la tangenziale di Vicenza, per
    dirne una — la distanza non basta a distinguerle: lo dice chi guida. E
@@ -67,7 +69,7 @@ body { display: flex; flex-direction: column; }
 /* nessun giunto nel raggio d'aggancio: la linea più vicina si mostra, ma
    dichiarata per quello che è */
 .posizione.lontano { background: #46504C; }
-.posizione.lontano .dove { font-size: 16px; font-weight: 600; opacity: .95; }
+.posizione.lontano .dove { font-size: 19px; font-weight: 600; opacity: .95; }
 
 /* ---------------------------------------------------------------- scatto */
 /* Il pulsante sta in basso, dove arriva il pollice tenendo il telefono in una
@@ -206,17 +208,25 @@ body { display: flex; flex-direction: column; }
   display: flex; gap: 8px; align-items: baseline;
 }
 .carreggiata .titolo span { font-weight: 400; font-size: 11.5px; }
-/* quale delle due carreggiate si sta rilevando: guardando la foto in ufficio
-   non si distingue l'andata dal ritorno, quindi va detto qui */
-.segno-carreggiata {
-  font: inherit; font-size: 12px; font-weight: 600; color: var(--tenue);
-  background: none; border: none; padding: 0; letter-spacing: .02em;
+/* Quale carreggiata si sta rilevando: due pulsanti affiancati, nello stesso
+   ordine del terreno (ovest e sud a sinistra, est e nord a destra). Sotto si
+   vede una carreggiata sola. */
+.scelta-carr { display: flex; gap: 8px; margin-bottom: 10px; }
+.carr-btn {
+  flex: 1; font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .03em;
+  padding: 12px 6px; border-radius: 10px; color: var(--tenue);
+  border: 2px solid var(--linea); background: var(--carta);
 }
-.carreggiata.scelta .segno-carreggiata { color: var(--accento); }
-.carreggiata.scelta .strisce { outline: 2px solid var(--accento-chiaro); outline-offset: 3px; }
+.carr-btn.attiva { border-color: var(--accento); background: var(--accento); color: #fff; }
+.scegli-carr {
+  margin: 4px 0 0; padding: 12px 14px; border-radius: 10px; font-size: 14px;
+  background: #FBF0D8; border: 1px solid #D9B45A; color: #6B5314;
+}
+.avviso-carr { margin: 0 0 10px; font-size: 12.5px; color: var(--tenue); }
+.carreggiata .titolo b { color: var(--inchiostro); font-size: 14px; }
 .strisce { display: flex; gap: 4px; }
 .corsia {
-  flex: 1; height: 54px; border-radius: 8px; border: 1px solid rgba(0,0,0,.22);
+  flex: 1; height: 64px; border-radius: 8px; border: 1px solid rgba(0,0,0,.22);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: rgba(0,0,0,.65);
 }
