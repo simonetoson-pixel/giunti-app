@@ -41,7 +41,35 @@ function fuga(s) {
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
+// ---------------------------------------------------- strati e tasto indietro
+// La scheda del ponte e le foto ingrandite sono sopra la pagina, ma per il
+// browser sono sempre la stessa pagina: il tasto "indietro" (e il gesto del
+// trackpad) usciva dall'archivio invece di chiudere la foto. Ogni strato che si
+// apre mette una voce nella cronologia, e "indietro" chiude lo strato in cima,
+// uno alla volta. Chiudere col pulsante fa la stessa cosa: torna indietro, e
+// la chiusura vera la fa l'evento della cronologia.
+const strati = [];
+
+function apriStrato(chiusura) {
+  history.pushState({ strato: strati.length + 1 }, '');
+  strati.push(chiusura);
+}
+
+function chiudiStrato() {
+  if (strati.length) history.back();
+}
+
+window.addEventListener('popstate', () => {
+  const chiusura = strati.pop();
+  if (chiusura) chiusura();
+});
+
 // --------------------------------------------------------------- apertura
+function nascondiScheda() {
+  $('scheda').hidden = true;
+  opera = null;
+}
+
 export function apriPonte(lineaId) {
   const linea = trovaLinea(lineaId);
   if (!linea) return;
@@ -49,14 +77,15 @@ export function apriPonte(lineaId) {
   evidenziata = lineaId;
   modifica = false;
   disegna();
+  if ($('scheda').hidden) apriStrato(nascondiScheda);
   $('scheda').hidden = false;
   const riga = document.querySelector('.riga-linea.evidenziata');
   if (riga) riga.scrollIntoView({ block: 'center' });
 }
 
 export function chiudi() {
-  $('scheda').hidden = true;
-  opera = null;
+  if (strati.length) history.back();
+  else nascondiScheda();
 }
 
 // ---------------------------------------------------------------- disegno
@@ -116,10 +145,45 @@ function colonne() {
 }
 
 
+// Da che parte dello schema sta una carreggiata: ovest e sud a sinistra, est e
+// nord a destra, come nello schema. Si guarda l'ordine che la linea stessa le
+// da; se la linea non ha quella carreggiata (si fotografa dall'altra parte di
+// un giunto che c'e' solo da un lato) si va a nome.
+function latoDi(linea, nome) {
+  if (!nome) return null;
+  const g = linea.carreggiate.find(x => x.carreggiata === nome);
+  const ordine = g ? g.ordine : (/^(OVEST|SUD)$/i.test(nome) ? 0 : 1);
+  return ordine === 0 ? 'sx' : 'dx';
+}
+
+function dataBreve(s) {
+  return new Date(s).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
+// Le foto di un lato, ognuna con sotto scritto di quale carreggiata e'.
+function gruppoFoto(elenco) {
+  return elenco.map(f => {
+    const carr = f.rilievo.carreggiata;
+    const nome = carr ? `Linea ${carr}` : 'Carreggiata non indicata';
+    return `<figure class="foto-scheda">
+      <img data-foto="${fuga(f.path)}" alt="${fuga(nome)} — ${data(f.rilievo.data)}" loading="lazy">
+      <figcaption>${fuga(nome)} <span>· ${dataBreve(f.rilievo.data)}</span></figcaption>
+    </figure>`;
+  }).join('');
+}
+
 function disegnaLinea(l, nomi) {
   const suoi = rilieviDi(l.id);
   const commenti = commentiDi(l.id);
   const foto = suoi.flatMap(r => (r.foto || []).map(f => ({ ...f, rilievo: r })));
+
+  // Le foto stanno dalla parte della loro carreggiata: a sinistra quelle della
+  // carreggiata di sinistra, a destra quelle di destra, con lo schema in mezzo.
+  // Prima stavano tutte in un blocco a destra, e non si capiva a cosa si
+  // riferissero. Quelle fatte senza dire la carreggiata (prima che l'app la
+  // registrasse) non si possono assegnare: stanno sotto, a parte.
+  const gruppi = { sx: [], dx: [], altre: [] };
+  foto.forEach(f => gruppi[latoDi(l, f.rilievo.carreggiata) || 'altre'].push(f));
 
   return `<section class="riga-linea${l.id === evidenziata ? ' evidenziata' : ''}"
                    data-linea="${fuga(l.id)}">
@@ -131,6 +195,7 @@ function disegnaLinea(l, nomi) {
     </div>
 
     <div class="corpo-linea">
+      <div class="foto-lato sx">${gruppoFoto(gruppi.sx)}</div>
       <div class="schema-linea">
         ${nomi.map(col => {
     const g = l.carreggiate.find(x => x.carreggiata === col.nome);
@@ -143,13 +208,10 @@ function disegnaLinea(l, nomi) {
   }).join('')}
       </div>
 
-      <div class="media-linea">
-        ${foto.length ? `<div class="foto-linea">${foto.map(f => `
-          <img data-foto="${fuga(f.path)}" data-quando="${fuga(f.rilievo.data)}"
-               alt="Foto del ${data(f.rilievo.data)}" loading="lazy">`).join('')}</div>`
-    : '<div class="niente-foto">Nessuna foto sul campo</div>'}
-      </div>
+      <div class="foto-lato dx">${gruppoFoto(gruppi.dx)}</div>
     </div>
+    ${gruppi.altre.length
+    ? `<div class="foto-lato altre">${gruppoFoto(gruppi.altre)}</div>` : ''}
 
     <div class="voci">
       ${disegnaVociCampo(suoi)}
@@ -308,8 +370,8 @@ function collegaEventi() {
       return;
     }
 
-    const img = e.target.closest('.foto-linea img');
-    if (img && img.src) ingrandisci(img.src, img.alt);
+    const img = e.target.closest('.foto-scheda img');
+    if (img && img.src) ingrandisci(img);
   });
 
   $('scheda-corpo').addEventListener('submit', async e => {
@@ -330,38 +392,48 @@ function collegaEventi() {
   });
 }
 
-// La foto si guarda grande: è per questo che si scatta. Con le frecce si
-// passa alle altre della stessa linea.
-function ingrandisci(src, didascalia) {
-  const tutte = [...$('scheda-corpo').querySelectorAll('.foto-linea img')]
-    .filter(i => i.src);
-  let i = Math.max(0, tutte.findIndex(x => x.src === src));
+// La foto si guarda grande: è per questo che si scatta. Con le frecce si passa
+// alle altre della stessa linea, nell'ordine in cui stanno sullo schermo
+// (prima quelle di sinistra, poi quelle di destra).
+//
+// Si chiude col pulsante in alto a destra, con Esc, cliccando sullo sfondo o
+// con "indietro" del browser. Prima c'erano solo Esc e lo sfondo, e chi usava
+// "indietro" usciva dall'archivio.
+function ingrandisci(img) {
+  const riga = img.closest('.riga-linea');
+  const tutte = [...riga.querySelectorAll('.foto-scheda img')].filter(i => i.src);
+  let i = Math.max(0, tutte.indexOf(img));
 
   const v = document.createElement('div');
   v.className = 'ingrandita';
-  v.innerHTML = `<img src="${src}" alt=""><div class="didascalia"></div>
+  v.innerHTML = `<img src="" alt=""><div class="didascalia"></div>
+    <button class="chiudi-foto" type="button" aria-label="Chiudi la foto">&times;</button>
     <button class="prec" type="button" aria-label="Precedente">&lsaquo;</button>
     <button class="succ" type="button" aria-label="Successiva">&rsaquo;</button>`;
   const mostra = () => {
     v.querySelector('img').src = tutte[i].src;
     v.querySelector('.didascalia').textContent =
-      `${tutte[i].alt} — ${i + 1} di ${tutte.length}`;
+      tutte.length > 1 ? `${tutte[i].alt} — ${i + 1} di ${tutte.length}` : tutte[i].alt;
   };
-  v.querySelector('.prec').addEventListener('click', e => {
-    e.stopPropagation(); i = (i - 1 + tutte.length) % tutte.length; mostra();
+  const vai = passo => { i = (i + passo + tutte.length) % tutte.length; mostra(); };
+
+  v.querySelector('.prec').addEventListener('click', e => { e.stopPropagation(); vai(-1); });
+  v.querySelector('.succ').addEventListener('click', e => { e.stopPropagation(); vai(1); });
+  v.querySelector('.chiudi-foto').addEventListener('click', e => {
+    e.stopPropagation(); chiudiStrato();
   });
-  v.querySelector('.succ').addEventListener('click', e => {
-    e.stopPropagation(); i = (i + 1) % tutte.length; mostra();
-  });
-  v.addEventListener('click', e => { if (e.target === v) chiudiFoto(); });
+  v.addEventListener('click', e => { if (e.target === v) chiudiStrato(); });
+
   const tasti = e => {
-    if (e.key === 'Escape') chiudiFoto();
-    if (e.key === 'ArrowLeft') { i = (i - 1 + tutte.length) % tutte.length; mostra(); }
-    if (e.key === 'ArrowRight') { i = (i + 1) % tutte.length; mostra(); }
+    if (e.key === 'Escape') { e.stopPropagation(); chiudiStrato(); }
+    if (e.key === 'ArrowLeft') vai(-1);
+    if (e.key === 'ArrowRight') vai(1);
   };
-  function chiudiFoto() { v.remove(); document.removeEventListener('keydown', tasti); }
-  document.addEventListener('keydown', tasti);
+  document.addEventListener('keydown', tasti, true);
   document.body.appendChild(v);
+  apriStrato(() => {
+    v.remove();
+    document.removeEventListener('keydown', tasti, true);
+  });
   mostra();
-  void didascalia;
 }
