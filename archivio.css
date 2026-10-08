@@ -426,3 +426,68 @@ main h3:first-child { margin-top: 0; }
   font-size: 30px; line-height: 1; cursor: pointer;
 }
 .ingrandita .chiudi-foto:hover { background: rgba(255,255,255,.32); }
+
+
+/* ============================================ stato di conservazione per tratta
+   Barre impilate, una per tratta. Spessore 22 px, 2 px di spazio fra i segmenti
+   (e' lo spazio a separare, non un bordo), angoli arrotondati solo dove finisce
+   il dato e squadrati sul bordo sinistro da cui partono. */
+.filtri-grafico { display: flex; gap: 14px; flex-wrap: wrap; margin: 4px 0 14px; }
+.segmentato {
+  display: inline-flex; border: 1px solid var(--linea); border-radius: 8px;
+  overflow: hidden; background: var(--carta);
+}
+.segmentato button {
+  font: inherit; font-size: 12.5px; padding: 6px 13px; border: none; cursor: pointer;
+  background: transparent; color: var(--tenue);
+}
+.segmentato button + button { border-left: 1px solid var(--linea); }
+.segmentato button:hover { background: var(--sfondo); }
+.segmentato button.attivo { background: var(--accento); color: #fff; font-weight: 600; }
+
+.legenda-grafico { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12.5px; color: var(--inchiostro); }
+.voce-legenda { display: inline-flex; align-items: center; gap: 7px; }
+.campione { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none; margin-right: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+
+.grafico-tratte { background: var(--carta); border: 1px solid var(--linea); border-radius: 10px; padding: 16px 18px 10px; }
+.riga-g {
+  display: grid; grid-template-columns: 210px minmax(0, 1fr) 46px; gap: 14px;
+  align-items: center; padding: 6px 0;
+}
+.nome-g { font-size: 12.5px; line-height: 1.25; color: var(--inchiostro); }
+.riga-g.rete .nome-g { font-weight: 600; }
+.tot-g { font-size: 12px; color: var(--tenue); text-align: right; font-variant-numeric: tabular-nums; }
+.separa-g { height: 1px; background: var(--linea); margin: 6px 0 8px; }
+.nota-g { margin: 10px 0 2px; font-size: 11.5px; color: var(--tenue); }
+
+.traccia-barra { min-width: 0; }
+.barra-g { display: flex; gap: 2px; height: 22px; }
+.seg {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-width: 3px; border-radius: 0; outline-offset: 1px;
+}
+.seg:last-child { border-radius: 0 4px 4px 0; }      /* il dato finisce qui */
+.seg:hover, .seg:focus-visible { filter: brightness(.92); outline: 2px solid var(--inchiostro); z-index: 1; }
+.seg-testo {
+  font-size: 11.5px; font-weight: 600; color: var(--inchiostro); white-space: nowrap;
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+
+.tip-grafico {
+  position: fixed; z-index: 1500; pointer-events: none; background: var(--carta);
+  border: 1px solid var(--linea); border-radius: 8px; padding: 8px 11px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 12.5px; max-width: 280px;
+}
+.tip-grafico[hidden] { display: none; }
+.tip-titolo { font-size: 11px; color: var(--tenue); margin-bottom: 3px; }
+.tip-riga { display: flex; align-items: center; gap: 4px; }
+.tip-riga strong { font-variant-numeric: tabular-nums; }
+
+table.statistiche tr.rete td { font-weight: 600; border-bottom: 2px solid var(--linea); }
+table.statistiche td .quota { color: var(--tenue); font-size: 11px; }
+table.statistiche th .campione { vertical-align: -1px; }
+
+@media (max-width: 760px) {
+  .riga-g { grid-template-columns: minmax(0, 1fr) 46px; }
+  .nome-g { grid-column: 1 / -1; }
+}

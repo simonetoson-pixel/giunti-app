@@ -11,6 +11,7 @@ import {
   dati, carica, STATI, NOMI_STATO, COLORE, statoLinea, statoGiunto,
 } from './dati-ufficio.js';
 import * as mappa from './mappa-ufficio.js';
+import { montaGraficoTratte } from './grafico-tratte.js';
 import * as schema from './schema-ufficio.js';
 import { apriPonte, chiudi as chiudiScheda, quandoCambia } from './scheda-ufficio.js';
 
@@ -185,6 +186,9 @@ function disegnaStatistiche() {
     <p class="tenue" style="font-size:12.5px">Ogni giunto vale quanto la sua corsia
       peggiore: una corsia in cattive condizioni fa cattivo tutto il giunto.</p>
 
+    <h3>Stato di conservazione per tratta</h3>
+    <div id="grafico-tratte"></div>
+
     <h3>Per tratta</h3>
     <table class="statistiche">
       <thead><tr><th>tratta</th><th class="num">opere</th><th class="num">linee</th>
@@ -211,6 +215,8 @@ function disegnaStatistiche() {
       ${piuDiffusi.map(([nome, n]) =>
     `<tr><td>${fuga(nome)}</td><td class="num">${n}</td></tr>`).join('')}
     </tbody></table>`;
+
+  montaGraficoTratte($('grafico-tratte'));
 }
 
 // -------------------------------------------------------------- l'insieme
