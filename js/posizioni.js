@@ -11,7 +11,8 @@ import { autenticato, entra, leggi, chiama, leggiTutto } from './rete.js';
 const $ = id => document.getElementById(id);
 let linee = [];            // censimento, con la posizione calcolata
 let corrette = {};         // linea_id -> {lat, lon, scarto_m}
-let mappa, strato, marcatori = {}, scelto = null;
+let scostiCarr = {};       // linea_id -> [{carreggiata, dlat, dlon}]: dove stanno le carreggiate rispetto all'asse
+let mappa, marcatori = {}, scelto = null, fantasmi = null;
 
 // ------------------------------------------------------------------ utili
 function metri(lat1, lon1, lat2, lon2) {
@@ -58,6 +59,17 @@ function posizione(l) {
   return c ? [c.lat, c.lon] : [l.lat, l.lon];
 }
 
+// Il pallino che si vede e' lo stesso che si trascina. Prima il pallino era un
+// cerchio e sopra c'era un segnaposto invisibile con la sua forma da spillo,
+// ancorato in basso: la zona in cui si poteva afferrare stava sopra il pallino,
+// non su di lui, e prenderlo nella metà inferiore trascinava la mappa.
+function icona(corretta, scelta) {
+  return L.divIcon({
+    className: 'punto-giunto' + (corretta ? ' corretta' : '') + (scelta ? ' scelto' : ''),
+    iconSize: [26, 26], iconAnchor: [13, 13],
+  });
+}
+
 function disegnaMarcatori() {
   Object.values(marcatori).forEach(m => {
     mappa.removeLayer(m.punto);
@@ -70,17 +82,14 @@ function disegnaMarcatori() {
     const [lat, lon] = posizione(l);
     const corretta = !!corrette[l.id];
 
-    const punto = L.circleMarker([lat, lon], {
-      radius: 7, weight: 2, color: '#fff',
-      fillColor: corretta ? '#2E7D4E' : '#d98c00', fillOpacity: 1,
+    const punto = L.marker([lat, lon], {
+      draggable: true, icon: icona(corretta, l.id === scelto),
+      title: `${l.opera || ''} · km ${l.km}`.trim(),
     }).addTo(mappa);
     punto.on('click', () => scegli(l.id));
-
-    // un secondo punto, trascinabile, sopra il primo
-    const maniglia = L.marker([lat, lon], { draggable: true, opacity: 0 }).addTo(mappa);
-    maniglia.on('dragstart', () => scegli(l.id));
-    maniglia.on('drag', e => punto.setLatLng(e.target.getLatLng()));
-    maniglia.on('dragend', e => salva(l, e.target.getLatLng()));
+    punto.on('dragstart', () => scegli(l.id));
+    punto.on('drag', e => mostraFantasmi(l, e.target.getLatLng()));
+    punto.on('dragend', e => salva(l, e.target.getLatLng()));
 
     // dove cadeva il calcolo, per vedere di quanto ci si è spostati
     let calcolato = null;
@@ -90,7 +99,27 @@ function disegnaMarcatori() {
         fillOpacity: .8, className: 'calcolato', interactive: false,
       }).addTo(mappa);
     }
-    marcatori[l.id] = { punto, maniglia, calcolato };
+    marcatori[l.id] = { punto, calcolato };
+  }
+  if (scelto) mostraFantasmi(linee.find(x => x.id === scelto));
+}
+
+// Le due carreggiate, dove l'app le considera: il punto della linea piu lo
+// scostamento che il censimento da a ciascuna. Si vedono per la linea scelta e
+// si muovono insieme al punto: cosi si controlla che cadano sulla carreggiata
+// giusta, che e' cio' su cui l'app si basa per capire da che lato ci si trova.
+function mostraFantasmi(l, centro) {
+  if (fantasmi) { mappa.removeLayer(fantasmi); fantasmi = null; }
+  if (!l) return;
+  const [lat0, lon0] = centro ? [centro.lat, centro.lng] : posizione(l);
+  fantasmi = L.layerGroup().addTo(mappa);
+  for (const c of scostiCarr[l.id] || []) {
+    if (!c.dlat && !c.dlon) continue;
+    L.circleMarker([lat0 + c.dlat, lon0 + c.dlon], {
+      radius: 6, weight: 2, color: '#fff', fillColor: '#1B4B6B', fillOpacity: .95,
+      interactive: false,
+    }).bindTooltip(c.carreggiata, { permanent: true, direction: 'top', offset: [0, -6],
+      className: 'etichetta-carr' }).addTo(fantasmi);
   }
 }
 
@@ -119,6 +148,15 @@ async function salva(l, latlng) {
   }
 }
 
+// Il punto scelto va dove sta il mirino, cioe' al centro della mappa. Si
+// sposta la mappa finche' il mirino e' sul giunto, e si preme. Con un trackpad e'
+// molto piu facile che trascinare un pallino piccolo con la precisione che serve.
+function portaQui() {
+  const l = linee.find(x => x.id === scelto);
+  if (!l) return;
+  salva(l, mappa.getCenter());
+}
+
 async function rimetti(id) {
   try {
     await chiama(`/rest/v1/posizioni?linea_id=eq.${encodeURIComponent(id)}`,
@@ -136,10 +174,20 @@ async function rimetti(id) {
 
 // -------------------------------------------------------------- selezione
 function scegli(id) {
+  const prima = scelto;
   scelto = id;
   const l = linee.find(x => x.id === id);
   if (!l) return;
   const c = corrette[id];
+  // evidenzia il punto scelto senza ridisegnare tutto (ridisegnare durante un
+  // trascinamento lo interromperebbe)
+  [prima, id].forEach(k => {
+    const m = marcatori[k];
+    const el = m && m.punto.getElement();
+    if (el) el.classList.toggle('scelto', k === id);
+  });
+  mostraFantasmi(l);
+  $('mirino').hidden = false;
   $('barra').hidden = false;
   $('sel-opera').textContent = l.opera || 'Opera non indicata';
   $('sel-dove').textContent = `${l.strada} · km ${l.km}`;
@@ -186,6 +234,18 @@ async function apri() {
   const righe = await leggiTutto('posizioni?select=linea_id,lat,lon,scarto_m&order=linea_id');
   corrette = Object.fromEntries(righe.map(r => [r.linea_id, r]));
 
+  // dove sta ogni carreggiata rispetto al punto calcolato della sua linea
+  const perId = Object.fromEntries(linee.map(l => [l.id, l]));
+  try {
+    const giunti = await leggiTutto('giunti?select=linea_id,carreggiata,lat,lon&order=linea_id,carreggiata');
+    for (const g of giunti) {
+      const l = perId[g.linea_id];
+      if (!l || g.lat == null) continue;
+      (scostiCarr[g.linea_id] ||= []).push(
+        { carreggiata: g.carreggiata, dlat: g.lat - l.lat, dlon: g.lon - l.lon });
+    }
+  } catch { /* senza, si vedono solo i punti delle linee */ }
+
   const strade = [...new Set(linee.map(l => l.strada))].sort();
   $('f-strada').innerHTML = '<option value="">Tutte le tratte</option>'
     + strade.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -208,6 +268,11 @@ function collega() {
     if (v) vaiA(v.dataset.id);
   });
   $('b-annulla').addEventListener('click', () => scelto && rimetti(scelto));
+  $('b-qui').addEventListener('click', portaQui);
+  // Invio fa lo stesso, a meno di non essere dentro a un campo di testo
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && scelto && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) portaQui();
+  });
 
   $('modulo-accesso').addEventListener('submit', async e => {
     e.preventDefault();

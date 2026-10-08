@@ -58,3 +58,44 @@ body.posizioni #s-lavoro.attiva { display: block; }
 
 /* il punto calcolato resta visibile, così si vede di quanto ci si è spostati */
 .calcolato { opacity: .55; }
+
+
+/* ------------------------------------------------------- il punto del giunto */
+/* Il pallino che si vede e' quello che si trascina: 26 px, abbastanza grande per
+   afferrarlo col trackpad, con il bordo bianco per leggerlo sull'asfalto. */
+.punto-giunto {
+  border-radius: 50%; background: #d98c00; border: 3px solid #fff;
+  box-shadow: 0 1px 5px rgba(0,0,0,.55); cursor: grab; box-sizing: border-box;
+}
+.punto-giunto.corretta { background: #2E7D4E; }
+.punto-giunto:active { cursor: grabbing; }
+.punto-giunto.scelto { outline: 3px solid #1B4B6B; outline-offset: 2px; }
+
+/* il mirino: al centro della mappa, senza intercettare i clic */
+.mirino {
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px;
+  margin: -22px 0 0 -22px; z-index: 900; pointer-events: none;
+}
+.mirino::before, .mirino::after {
+  content: ''; position: absolute; background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,.65);
+}
+.mirino::before { left: 21px; top: 0; width: 2px; height: 44px; }
+.mirino::after  { top: 21px; left: 0; height: 2px; width: 44px; }
+.mirino[hidden] { display: none; }
+
+.porta-qui {
+  font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 16px;
+  border-radius: 9px; border: none; background: var(--accento); color: #fff; cursor: pointer;
+}
+.porta-qui:hover { filter: brightness(1.12); }
+
+.come { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; color: var(--tenue); }
+.come li { margin-bottom: 4px; }
+.come b { color: var(--inchiostro); }
+
+.etichetta-carr {
+  background: #1B4B6B; color: #fff; border: none; font-size: 11px; font-weight: 700;
+  padding: 2px 6px; box-shadow: none;
+}
+.etichetta-carr::before { display: none; }

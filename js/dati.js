@@ -57,7 +57,14 @@ async function scarica() {
     corrette = Object.fromEntries((await p.json()).map(x => [x.linea_id, x]));
   } catch { /* la tabella può non esserci ancora: si usano quelle calcolate */ }
 
-  return grezze.map(l => ({
+  return grezze.map(l => {
+    // Una posizione corretta sposta il punto della linea, e con lui le due
+    // carreggiate, che stanno a un tratto fisso da quello: prima si spostava
+    // solo la linea, e il riconoscimento della carreggiata ragionava su punti
+    // rimasti dove li calcolava il censimento.
+    const c = corrette[l.id];
+    const dlat = c ? c.lat - l.lat : 0, dlon = c ? c.lon - l.lon : 0;
+    return {
     id: l.id, strada: l.strada, km: l.km, km_m: l.km_m, opera: l.opera,
     lat: (corrette[l.id] || l).lat, lon: (corrette[l.id] || l).lon,
     rotta: l.rotta,
@@ -69,12 +76,14 @@ async function scarica() {
         doppio_senso: g.doppio_senso,
         // ogni carreggiata ha la sua posizione: sono una quindicina di metri
         // fra l'una e l'altra, abbastanza perché il GPS le distingua
-        lat: g.lat, lon: g.lon,
+        lat: g.lat == null ? null : g.lat + dlat,
+        lon: g.lon == null ? null : g.lon + dlon,
         corsie: (g.corsie || [])
           .sort((a, b) => a.posizione - b.posizione)
           .map(c => [c.corsia, c.stato]),
       })),
-  }));
+  };
+  });
 }
 
 // Prima si mostra quello che c'è già, poi si prova ad aggiornarlo: sul campo

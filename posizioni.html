@@ -29,12 +29,21 @@
 
 <section class="schermata" id="s-lavoro">
   <div id="mappa"></div>
+  <div class="mirino" id="mirino" hidden aria-hidden="true"></div>
 
   <aside class="pannello-lavoro">
     <h1>Posizione dei giunti</h1>
     <p class="spiega">Le coordinate vengono calcolate dalla chilometrica sul
-      grafo, che è una linea sola: cadono sull'asse della strada. Trascina il
-      punto dove il giunto sta davvero e resta lì.</p>
+      grafo, che è una linea sola: cadono sull'asse della strada. Il punto va
+      dove il giunto sta davvero. Due modi:</p>
+    <ol class="come">
+      <li><b>Trascina</b> il pallino sul giunto.</li>
+      <li>Oppure <b>scegli la linea</b>, sposta la mappa finché il
+        <b>mirino</b> è sul giunto, e premi <b>Porta qui il punto</b>
+        (o Invio). È più facile col trackpad.</li>
+    </ol>
+    <p class="spiega">I due punti blu sono le carreggiate: seguono la linea, e
+      devono cadere ciascuno sulla sua.</p>
 
     <div class="gruppo">
       <label class="et" for="f-strada">Tratta</label>
@@ -55,6 +64,7 @@
       <span id="sel-dove"></span>
     </div>
     <span class="scarto" id="sel-scarto"></span>
+    <button class="porta-qui" id="b-qui" type="button">Porta qui il punto</button>
     <button class="bottone-chiaro" id="b-annulla" type="button">Rimetti al calcolo</button>
   </div>
 </section>
