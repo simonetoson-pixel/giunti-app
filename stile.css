@@ -75,6 +75,16 @@ body { display: flex; flex-direction: column; }
    dichiarata per quello che è */
 .posizione.lontano { background: #46504C; }
 .posizione.lontano .dove { font-size: 19px; font-weight: 600; opacity: .95; }
+/* dopo uno scatto: non la linea piu vicina, ma la prossima nel verso di marcia */
+.posizione.prossimo { background: #1F5A7A; }
+.torna-vicino {
+  align-self: flex-start; margin-top: 4px; font: inherit; font-size: 12.5px;
+  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 8px; padding: 4px 10px;
+}
+.scelte { flex-wrap: wrap; }
+.scelta.avviso-voce { flex: 1 0 100%; text-align: center; white-space: nowrap; padding: 5px 9px; }
+.scelta.avviso-voce.acceso { background: rgba(255,255,255,.32); border-color: #fff; }
 
 /* ---------------------------------------------------------------- scatto */
 /* Il pulsante sta in basso, dove arriva il pollice tenendo il telefono in una

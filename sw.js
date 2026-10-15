@@ -3,11 +3,11 @@
 
 // Alzare insieme a VERSIONE in js/app.js: e' il numero che l'app mostra in
 // fondo, e serve a capire a colpo d'occhio quale versione sta girando.
-const CACHE = 'giunti-v8';
+const CACHE = 'giunti-v9';
 const FILE = [
   './', './index.html', './stile.css', './manifest.json',
   './js/app.js', './js/vicini.js', './js/coda.js',
-  './js/rete.js', './js/dati.js', './icona.svg', './config.json',
+  './js/rete.js', './js/dati.js', './js/prossimo.js', './icona.svg', './config.json',
 ];
 
 self.addEventListener('install', e => {

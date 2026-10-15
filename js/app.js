@@ -8,6 +8,9 @@ import { accoda, aggiorna, elimina, sincronizza, allaRete, inCoda, unRilievo }
   from './coda.js';
 import { autenticato, entra, esci, leggi, urlFirmato } from './rete.js';
 import { censimento } from './dati.js';
+import {
+  direzioneDi, lineaDopo, fraseAvviso, preparaVoce, parla, schermoAcceso,
+} from './prossimo.js';
 
 const STATI = ['ottime', 'buone_datate', 'attenzionare', 'cattive'];
 const NOMI_STATO = {
@@ -54,7 +57,7 @@ const mostra = id => {
 // Il numero della versione, scritto in fondo alla schermata: se non e' quello
 // atteso, il telefono sta ancora usando la copia vecchia. Alzarlo insieme a
 // CACHE in sw.js.
-const VERSIONE = 8;
+const VERSIONE = 9;
 
 // Quando arriva una versione nuova l'app si ricarica da sola, ma solo se non
 // si sta compilando un rilievo: in quel caso aspetta che si torni allo scatto,
@@ -131,6 +134,109 @@ async function caricaLinee() {
   });
 }
 
+// ------------------------------------------------------- il ponte successivo
+// Dopo aver fotografato una linea, la fascia in alto non mostra la linea piu
+// vicina — e' ancora quella appena fatta — ma la prossima nel verso di marcia:
+// cosi si sa subito dove si va. Il verso lo dice la carreggiata (che ha un
+// senso di marcia solo), o in mancanza la rotta tenuta poco prima.
+let prossimo = null;       // {da, linea, quando, annunciato}
+const PROSSIMO_VALE_MS = 40 * 60 * 1000;
+const ARRIVATO_M = 80;     // a questa distanza e' arrivato: torna la linea piu vicina
+const AVVISO_M = 500;
+
+function impostaProssimo(linea, carr) {
+  const stessaStrada = linee.filter(l => l.strada === linea.strada);
+  const nomi = [...new Set(stessaStrada.flatMap(l => l.carreggiate.map(c => c.nome)))];
+  const verso = direzioneDi(linea, carr, nomi, { valore: rotta, quando: rottaQuando });
+  const prossima = lineaDopo(stessaStrada, linea, verso, carr);
+  prossimo = prossima ? { da: linea, linea: prossima, quando: Date.now(), annunciato: false } : null;
+  aggiornaPosizione();
+}
+
+function lasciaProssimo() {
+  prossimo = null;
+  aggiornaPosizione();
+}
+
+// Scrive il ponte successivo al posto della linea piu vicina. Vero se l'ha fatto.
+function mostraProssimo(gps) {
+  let b = $('b-torna-vicino');
+  if (prossimo && Date.now() - prossimo.quando > PROSSIMO_VALE_MS) prossimo = null;
+  const l = prossimo && prossimo.linea;
+  const d = l && posizione ? metri(posizione.lat, posizione.lon, l.lat, l.lon) : null;
+  if (l && d != null && d < ARRIVATO_M) { prossimo = null; }
+  if (!prossimo || !posizione) { if (b) b.remove(); return false; }
+
+  const stesso = (prossimo.da.opera || '') === (l.opera || '');
+  scrivi('dove', l.opera || 'Opera non indicata');
+  scrivi('opera-vicina', `${stesso ? 'Prossima linea' : 'Prossimo ponte'} · ${l.strada} km ${l.km}`);
+  scrivi('segnale', `${distanzaLeggibile(d)} avanti · ${gps}`);
+  if ($('posizione')) $('posizione').className = 'posizione prossimo';
+
+  if (!b && $('posizione')) {
+    b = document.createElement('button');
+    b.id = 'b-torna-vicino';
+    b.type = 'button';
+    b.className = 'torna-vicino';
+    b.textContent = 'Mostra il più vicino';
+    b.addEventListener('click', lasciaProssimo);
+    $('posizione').insertBefore(b, $('posizione').querySelector('.scelte'));
+  }
+  avvisaVoce(d);
+  return true;
+}
+
+// ------------------------------------------------------------ avviso a voce
+// Gratuito e senza peso: e' la voce del telefono. Funziona solo con l'app
+// aperta e lo schermo acceso, per questo mentre e' attivo lo schermo non si
+// spegne.
+const VOCE = 'giunti-voce';
+let voceAttiva = false;
+try { voceAttiva = localStorage.getItem(VOCE) === '1'; } catch { /* privato: spento */ }
+
+function avvisaVoce(distanza) {
+  if (!voceAttiva || !prossimo || prossimo.annunciato) return;
+  if (distanza > AVVISO_M) return;
+  if ((prossimo.da.opera || '') === (prossimo.linea.opera || '')) return;   // stesso ponte: niente da dire
+  prossimo.annunciato = true;
+  parla(fraseAvviso(prossimo.linea.opera || 'opera senza nome', distanza));
+}
+
+function mostraVoce() {
+  const b = $('b-voce');
+  if (!b) return;
+  b.textContent = voceAttiva ? '🔊 Avviso a voce: sì' : '🔈 Avviso a voce: no';
+  b.classList.toggle('acceso', voceAttiva);
+}
+
+function creaPulsanteVoce() {
+  const scelte = document.querySelector('#posizione .scelte');
+  if (!scelte || $('b-voce')) return;
+  const b = document.createElement('button');
+  b.id = 'b-voce';
+  b.type = 'button';
+  b.className = 'scelta avviso-voce';
+  b.addEventListener('click', () => {
+    voceAttiva = !voceAttiva;
+    try { localStorage.setItem(VOCE, voceAttiva ? '1' : '0'); } catch { /* pazienza */ }
+    if (voceAttiva) {
+      preparaVoce();
+      parla('Avviso a voce attivo');
+    }
+    schermoAcceso(voceAttiva);
+    mostraVoce();
+  });
+  scelte.appendChild(b);
+  mostraVoce();
+  if (voceAttiva) schermoAcceso(true);
+  // lo schermo acceso va richiesto di nuovo quando si torna nell'app
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && voceAttiva) schermoAcceso(true);
+  });
+  // la voce, su iPhone, parte solo dopo un tocco: il primo che arriva la prepara
+  document.addEventListener('pointerdown', () => { if (voceAttiva) preparaVoce(); }, { once: true });
+}
+
 // ------------------------------------------------------------------ GPS
 function seguiPosizione() {
   if (!navigator.geolocation) {
@@ -190,6 +296,7 @@ function aggiornaPosizione() {
     scrivi('opera-vicina', `il più vicino ${distanzaLeggibile(proposta.distanza)}`
       + ` · ${proposta.linea.opera || proposta.linea.strada}, km ${proposta.linea.km}`);
     scrivi('segnale', `${gps} · puoi scattare, la linea la scegli tu`);
+    mostraProssimo(gps);
     return;
   }
 
@@ -206,6 +313,7 @@ function aggiornaPosizione() {
   scrivi('opera-vicina', `${proposta.linea.strada} · km ${proposta.linea.km}`);
   scrivi('segnale', `${distanzaLeggibile(proposta.distanza)} · ${gps}`
     + (carreggiateInDisaccordo ? ' · carreggiata da confermare' : ''));
+  mostraProssimo(gps);
 }
 
 // Il pulsante che dice "sei vicino a X: passa a quella tratta". Si crea qui
@@ -285,9 +393,10 @@ function riempiCarreggiate() {
 }
 
 // ---------------------------------------------------------------- foto
-// Le foto si rimpiccioliscono prima di partire: in campo la rete è poca e
-// 1600 px bastano abbondantemente a vedere lo stato di un giunto.
-function rimpicciolisci(file, latoMax = 1600, qualita = 0.82) {
+// Le foto si rimpiccioliscono prima di partire: in campo la rete è poca. 2400 px
+// sul lato lungo bastano a leggere i dettagli di un giunto ingrandendo, e una
+// foto pesa meno di un megabyte.
+function rimpicciolisci(file, latoMax = 2400, qualita = 0.84) {
   return new Promise(ok => {
     const img = new Image();
     img.onload = () => {
@@ -716,11 +825,16 @@ async function salva() {
   if (rilievo.esistente) await aggiorna(record);
   else await accoda(record);
 
+  const lineaSalvata = rilievo.linea, carrSalvata = attiva;
+  const eraNuovo = !rilievo.esistente;
   rilievo = null;
   $('nota').value = '';
   azzeraVocale();
   $('b-salva').disabled = false;
   mostra('s-scatto');
+  // si guarda avanti solo dopo un rilievo nuovo: ritoccarne uno vecchio non
+  // dice dove si sta andando
+  if (eraNuovo) impostaProssimo(lineaSalvata, carrSalvata);
   avvisa(record.inviato_il ? 'Modifiche salvate' : 'Rilievo salvato', 'buono');
   aggiornaCoda();
   provaSincronizzare();
@@ -945,6 +1059,7 @@ async function apriApp() {
     sel.value = tratta;
   }
   riempiCarreggiate();
+  creaPulsanteVoce();
 
   try {
     seguiPosizione();
