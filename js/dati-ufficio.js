@@ -185,11 +185,20 @@ async function sovrascrivi(tabella, riga, chiave) {
 }
 
 export async function correggiCorsia(giuntoId, posizione, stato, autore) {
+  const g = trovaGiunto(giuntoId);
+  const c = g && g.corsie.find(x => x.posizione === posizione);
+  if (!stato) {
+    // "Come da censimento": si toglie la correzione, e la corsia torna al colore
+    // dell'Excel. Prima si scriveva una correzione vuota e il colore a schermo
+    // restava vuoto finche non si ricaricava la pagina.
+    await chiama(`/rest/v1/modifiche_corsie?giunto_id=eq.${encodeURIComponent(giuntoId)}`
+      + `&posizione=eq.${posizione}`, { method: 'DELETE' });
+    if (c) { c.stato = c.stato_censimento; c.corretto = false; }
+    return;
+  }
   await sovrascrivi('modifiche_corsie',
     { giunto_id: giuntoId, posizione, stato, autore, modificato_il: new Date().toISOString() },
     'giunto_id,posizione');
-  const g = trovaGiunto(giuntoId);
-  const c = g && g.corsie.find(x => x.posizione === posizione);
   if (c) { c.stato = stato; c.corretto = true; }
 }
 

@@ -12,6 +12,7 @@
 // corregga, e un clic per sbaglio non deve cambiare un dato.
 
 import { urlFirmato, emailUtente } from './rete.js';
+import { preparaFoto, caricaFotoUfficio, aaaammgg } from './foto-ufficio.js';
 import {
   dati, NOMI_STATO, COLORE, STATI, statoGiunto, rilieviDi, commentiDi,
   operaDi, correggiCorsia, correggiGiunto, aggiungiCommento, cancellaCommento,
@@ -99,10 +100,12 @@ function disegna() {
         ${opera.km_da !== opera.km_a ? ` &ndash; ${opera.km_a}` : ''}
         · ${opera.linee.length} ${opera.linee.length === 1 ? 'linea' : 'linee di giunto'}
         ${tipologia ? ` · ${fuga(tipologia)}` : ''}</div>
-      <label class="interruttore">
-        <input type="checkbox" id="b-modifica" ${modifica ? 'checked' : ''}>
-        <span>Modifica lo schema</span>
-      </label>
+      <div class="barra-modifica">
+        <button type="button" id="b-modifica" class="bottone-modifica${modifica ? ' attivo' : ''}"
+                aria-pressed="${modifica ? 'true' : 'false'}">
+          ✎ ${modifica ? 'Fine modifica' : 'Modifica i colori delle corsie'}</button>
+        ${modifica ? '<span class="aiuto-modifica">Clicca una corsia per cambiarne il colore; clicca modello e anno per correggerli.</span>' : ''}
+      </div>
     </div>
     <div class="scheda-corpo${modifica ? ' in-modifica' : ''}">
       ${opera.linee.map(l => disegnaLinea(l, colonne())).join('')}
@@ -172,6 +175,17 @@ function gruppoFoto(elenco) {
   }).join('');
 }
 
+// Il pulsante per aggiungere foto fatte fuori dall'app: sta dalla parte della
+// carreggiata a cui le foto appartengono, quindi la carreggiata e' gia detta.
+function pulsanteAggiungi(l, lato) {
+  const g = l.carreggiate.find(x => (lato === 'sx') === (x.ordine === 0));
+  if (!g) return '';
+  return `<div class="aggiungi-foto-zona">
+    <button type="button" class="aggiungi-foto" data-linea="${fuga(l.id)}"
+            data-carr="${fuga(g.carreggiata)}">＋ Aggiungi foto · ${fuga(g.carreggiata)}</button>
+  </div>`;
+}
+
 function disegnaLinea(l, nomi) {
   const suoi = rilieviDi(l.id);
   const commenti = commentiDi(l.id);
@@ -195,7 +209,7 @@ function disegnaLinea(l, nomi) {
     </div>
 
     <div class="corpo-linea">
-      <div class="foto-lato sx">${gruppoFoto(gruppi.sx)}</div>
+      <div class="foto-lato sx">${gruppoFoto(gruppi.sx)}${pulsanteAggiungi(l, 'sx')}</div>
       <div class="schema-linea">
         ${nomi.map(col => {
     const g = l.carreggiate.find(x => x.carreggiata === col.nome);
@@ -208,7 +222,7 @@ function disegnaLinea(l, nomi) {
   }).join('')}
       </div>
 
-      <div class="foto-lato dx">${gruppoFoto(gruppi.dx)}</div>
+      <div class="foto-lato dx">${gruppoFoto(gruppi.dx)}${pulsanteAggiungi(l, 'dx')}</div>
     </div>
     ${gruppi.altre.length
     ? `<div class="foto-lato altre">${gruppoFoto(gruppi.altre)}</div>` : ''}
@@ -346,8 +360,8 @@ async function cambiaMeta(span, giuntoId) {
 
 // ----------------------------------------------------------------- eventi
 function collegaEventi() {
-  $('b-modifica').addEventListener('change', e => {
-    modifica = e.target.checked;
+  $('b-modifica').addEventListener('click', () => {
+    modifica = !modifica;
     disegna();
   });
 
@@ -371,7 +385,10 @@ function collegaEventi() {
     }
 
     const img = e.target.closest('.foto-scheda img');
-    if (img && img.src) ingrandisci(img);
+    if (img && img.src) return ingrandisci(img);
+
+    const aggiungi = e.target.closest('.aggiungi-foto');
+    if (aggiungi) return scegliFoto(aggiungi);
   });
 
   $('scheda-corpo').addEventListener('submit', async e => {
@@ -396,9 +413,15 @@ function collegaEventi() {
 // alle altre della stessa linea, nell'ordine in cui stanno sullo schermo
 // (prima quelle di sinistra, poi quelle di destra).
 //
+// Si ingrandisce per vedere i dettagli: rotellina o pizzico del trackpad (verso
+// il punto in cui si sta), doppio clic, i pulsanti + e −, e i tasti + − 0. Da
+// ingrandita si trascina per spostarsi. "100%" mostra la foto a dimensione
+// reale, un pixel suo per ogni pixel CSS.
+//
 // Si chiude col pulsante in alto a destra, con Esc, cliccando sullo sfondo o
-// con "indietro" del browser. Prima c'erano solo Esc e lo sfondo, e chi usava
-// "indietro" usciva dall'archivio.
+// con "indietro" del browser.
+const ZOOM_MAX = 10;
+
 function ingrandisci(img) {
   const riga = img.closest('.riga-linea');
   const tutte = [...riga.querySelectorAll('.foto-scheda img')].filter(i => i.src);
@@ -406,12 +429,61 @@ function ingrandisci(img) {
 
   const v = document.createElement('div');
   v.className = 'ingrandita';
-  v.innerHTML = `<img src="" alt=""><div class="didascalia"></div>
+  v.innerHTML = `<img src="" alt="" draggable="false"><div class="didascalia"></div>
     <button class="chiudi-foto" type="button" aria-label="Chiudi la foto">&times;</button>
     <button class="prec" type="button" aria-label="Precedente">&lsaquo;</button>
-    <button class="succ" type="button" aria-label="Successiva">&rsaquo;</button>`;
+    <button class="succ" type="button" aria-label="Successiva">&rsaquo;</button>
+    <div class="barra-zoom" role="group" aria-label="Ingrandimento">
+      <button type="button" data-zoom="meno" aria-label="Riduci">&minus;</button>
+      <span class="livello" aria-live="polite">adatta</span>
+      <button type="button" data-zoom="piu" aria-label="Ingrandisci">+</button>
+      <button type="button" data-zoom="adatta">Adatta</button>
+      <button type="button" data-zoom="cento">100%</button>
+    </div>`;
+  const foto = v.querySelector('img');
+  const livello = v.querySelector('.livello');
+
+  // --- ingrandimento: scala e spostamento, con l'origine al centro dello schermo
+  let sc = 1, tx = 0, ty = 0;
+  const centro = () => { const r = v.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width, r.height]; };
+
+  function limita() {
+    // la foto non si fa scappare fuori: si puo spostare solo finche copre lo schermo
+    const [, , vw, vh] = centro();
+    const mx = Math.max(0, (foto.offsetWidth * sc - vw) / 2);
+    const my = Math.max(0, (foto.offsetHeight * sc - vh) / 2);
+    tx = Math.min(mx, Math.max(-mx, tx));
+    ty = Math.min(my, Math.max(-my, ty));
+  }
+  function applica() {
+    limita();
+    foto.style.transform = `translate(${tx}px, ${ty}px) scale(${sc})`;
+    v.classList.toggle('ingrandita-zoom', sc > 1.001);
+    livello.textContent = sc <= 1.001 ? 'adatta' : `${Math.round(sc * 100)}%`;
+  }
+  // porta l'ingrandimento a `nuova`, tenendo fermo il punto sotto il puntatore
+  function zoomA(nuova, cx, cy) {
+    nuova = Math.min(ZOOM_MAX, Math.max(1, nuova));
+    const [ox, oy] = centro();
+    const px = (cx ?? ox) - ox, py = (cy ?? oy) - oy;
+    const k = nuova / sc;
+    tx = px - k * (px - tx);
+    ty = py - k * (py - ty);
+    sc = nuova;
+    if (sc <= 1.001) { sc = 1; tx = ty = 0; }
+    applica();
+  }
+  // dimensione reale: un pixel della foto per ogni pixel CSS, come "dimensione
+  // effettiva" nei browser. Su uno schermo Retina e' gia piu fitto dei pixel veri.
+  function aCento() {
+    const fit = foto.offsetWidth || 1;
+    zoomA(Math.max(1, foto.naturalWidth / fit));
+  }
+  const azzera = () => { sc = 1; tx = ty = 0; applica(); };
+
   const mostra = () => {
-    v.querySelector('img').src = tutte[i].src;
+    azzera();
+    foto.src = tutte[i].src;
     v.querySelector('.didascalia').textContent =
       tutte.length > 1 ? `${tutte[i].alt} — ${i + 1} di ${tutte.length}` : tutte[i].alt;
   };
@@ -419,21 +491,162 @@ function ingrandisci(img) {
 
   v.querySelector('.prec').addEventListener('click', e => { e.stopPropagation(); vai(-1); });
   v.querySelector('.succ').addEventListener('click', e => { e.stopPropagation(); vai(1); });
-  v.querySelector('.chiudi-foto').addEventListener('click', e => {
-    e.stopPropagation(); chiudiStrato();
-  });
+  v.querySelector('.chiudi-foto').addEventListener('click', e => { e.stopPropagation(); chiudiStrato(); });
   v.addEventListener('click', e => { if (e.target === v) chiudiStrato(); });
+
+  v.querySelector('.barra-zoom').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    e.stopPropagation();
+    if (b.dataset.zoom === 'piu') zoomA(sc * 1.5);
+    else if (b.dataset.zoom === 'meno') zoomA(sc / 1.5);
+    else if (b.dataset.zoom === 'adatta') azzera();
+    else if (b.dataset.zoom === 'cento') aCento();
+  });
+
+  // rotellina, e pizzico del trackpad (che i browser mandano come rotellina con Ctrl)
+  v.addEventListener('wheel', e => {
+    e.preventDefault();
+    // un pizzico vero manda tanti scatti piccoli; una rotellina con Ctrl, uno
+    // solo e grosso: si limita, cosi non salta di cinque volte in un colpo
+    const delta = e.ctrlKey ? Math.max(-40, Math.min(40, e.deltaY)) : e.deltaY;
+    zoomA(sc * Math.exp(-delta * (e.ctrlKey ? 0.012 : 0.0018)), e.clientX, e.clientY);
+  }, { passive: false });
+
+  // Safari sul Mac manda il pizzico come "gesture", non come rotellina
+  let baseGesto = 1;
+  v.addEventListener('gesturestart', e => { e.preventDefault(); baseGesto = sc; });
+  v.addEventListener('gesturechange', e => { e.preventDefault(); zoomA(baseGesto * e.scale, e.clientX, e.clientY); });
+
+  // doppio clic: ingrandisce dove si e', o torna a tutta la foto
+  foto.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    if (sc > 1.001) azzera(); else zoomA(2.5, e.clientX, e.clientY);
+  });
+
+  // trascinare per spostarsi, solo se ingrandita
+  let presa = null;
+  foto.addEventListener('pointerdown', e => {
+    if (sc <= 1.001 || e.button !== 0) return;
+    presa = { x: e.clientX, y: e.clientY, tx, ty };
+    foto.setPointerCapture(e.pointerId);
+    v.classList.add('trascinando');
+  });
+  foto.addEventListener('pointermove', e => {
+    if (!presa) return;
+    tx = presa.tx + (e.clientX - presa.x);
+    ty = presa.ty + (e.clientY - presa.y);
+    applica();
+  });
+  const finePresa = () => { presa = null; v.classList.remove('trascinando'); };
+  foto.addEventListener('pointerup', finePresa);
+  foto.addEventListener('pointercancel', finePresa);
+  foto.addEventListener('click', e => e.stopPropagation());   // un clic sulla foto non la chiude
 
   const tasti = e => {
     if (e.key === 'Escape') { e.stopPropagation(); chiudiStrato(); }
-    if (e.key === 'ArrowLeft') vai(-1);
-    if (e.key === 'ArrowRight') vai(1);
+    else if (e.key === 'ArrowLeft') vai(-1);
+    else if (e.key === 'ArrowRight') vai(1);
+    else if (e.key === '+' || e.key === '=') zoomA(sc * 1.5);
+    else if (e.key === '-' || e.key === '_') zoomA(sc / 1.5);
+    else if (e.key === '0') azzera();
   };
   document.addEventListener('keydown', tasti, true);
+  window.addEventListener('resize', applica);
   document.body.appendChild(v);
   apriStrato(() => {
     v.remove();
     document.removeEventListener('keydown', tasti, true);
+    window.removeEventListener('resize', applica);
   });
   mostra();
+}
+
+
+// ------------------------------------------------- foto aggiunte dal desktop
+function scegliFoto(pulsante) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.multiple = true;
+  input.addEventListener('change', async () => {
+    if (!input.files.length) return;
+    const foto = await preparaFoto([...input.files]);
+    if (!foto.length) { alert('Nessuno dei file scelti è una foto che il browser sa aprire.'); return; }
+    pannelloFoto(pulsante, foto);
+  });
+  input.click();
+}
+
+const nomeGiorno = d => new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+
+// Un piccolo pannello al posto del pulsante: dice cosa sta per caricare, lascia
+// correggere la data e scrivere una nota, e carica. Le etichette arrivano dai
+// nomi dei file e dal censimento: si scrivono sempre come testo, mai come HTML.
+function pannelloFoto(pulsante, foto) {
+  const zona = pulsante.closest('.aggiungi-foto-zona');
+  const lineaId = pulsante.dataset.linea;
+  const carr = pulsante.dataset.carr;
+  const linea = trovaLinea(lineaId);
+  const ids = new Map();                 // lo stesso rilievo se si riprova dopo un errore
+
+  const giorni = new Map();
+  foto.forEach(f => giorni.set(aaaammgg(f.data), (giorni.get(aaaammgg(f.data)) || 0) + 1));
+  const riassunto = [...giorni].map(([g, n]) => `${n} foto del ${nomeGiorno(g)}`).join(', ');
+
+  const el = (tag, classe, testo) => {
+    const e = document.createElement(tag);
+    if (classe) e.className = classe;
+    if (testo != null) e.textContent = testo;
+    return e;
+  };
+  const p = el('div', 'pannello-foto');
+  p.appendChild(el('div', 'titolo-pannello', `${foto.length} foto · linea ${carr}`));
+  p.appendChild(el('div', 'riassunto-pannello', riassunto));
+
+  const rigaData = el('label', 'campo-pannello');
+  rigaData.appendChild(el('span', '', 'Data'));
+  const data = el('input'); data.type = 'date';
+  data.title = 'Lasciala vuota per tenere la data di ogni foto';
+  rigaData.appendChild(data);
+  rigaData.appendChild(el('small', '', giorni.size > 1 ? 'vuota: ogni foto tiene la sua' : 'vuota: quella della foto'));
+  p.appendChild(rigaData);
+
+  const rigaNota = el('label', 'campo-pannello');
+  rigaNota.appendChild(el('span', '', 'Nota'));
+  const nota = el('input'); nota.type = 'text'; nota.placeholder = 'facoltativa';
+  rigaNota.appendChild(nota);
+  p.appendChild(rigaNota);
+
+  const esito = el('div', 'esito-pannello');
+  const azioni = el('div', 'azioni-pannello');
+  const carica = el('button', 'carica-foto', `Carica ${foto.length} foto`);
+  carica.type = 'button';
+  const annulla = el('button', 'annulla-foto', 'Annulla');
+  annulla.type = 'button';
+  azioni.append(carica, annulla);
+  p.append(azioni, esito);
+
+  annulla.addEventListener('click', () => { p.remove(); pulsante.hidden = false; });
+  carica.addEventListener('click', async () => {
+    carica.disabled = annulla.disabled = true;
+    esito.className = 'esito-pannello';
+    try {
+      const creati = await caricaFotoUfficio({
+        lineaId, carreggiata: carr, foto, dataForzata: data.value || null,
+        nota: nota.value, autore: emailUtente(), ids,
+        avanzamento: (n, tot) => { esito.textContent = `Carico la foto ${n} di ${tot}…`; },
+      });
+      creati.forEach(r => { r.linea = linea; dati.rilievi.unshift(r); });
+      disegna();
+      if (alCambio) alCambio();
+    } catch (err) {
+      esito.className = 'esito-pannello errore';
+      esito.textContent = `Non riesco a caricarle: ${String(err.message || err)}. Si puo riprovare.`;
+      carica.disabled = annulla.disabled = false;
+    }
+  });
+
+  pulsante.hidden = true;
+  zona.appendChild(p);
 }

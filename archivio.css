@@ -491,3 +491,66 @@ table.statistiche th .campione { vertical-align: -1px; }
   .riga-g { grid-template-columns: minmax(0, 1fr) 46px; }
   .nome-g { grid-column: 1 / -1; }
 }
+
+
+/* ============================== modificare i colori delle corsie dal desktop
+   Un pulsante chiaro, non una casella: va trovato a colpo d'occhio. Spento di
+   default, perche in ufficio si legge molto piu spesso di quanto si corregga. */
+.barra-modifica { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.bottone-modifica {
+  font: inherit; font-size: 13px; font-weight: 600; padding: 8px 15px; border-radius: 9px;
+  border: 1.5px solid var(--accento); background: var(--carta); color: var(--accento); cursor: pointer;
+}
+.bottone-modifica:hover { background: var(--accento-chiaro); }
+.bottone-modifica.attivo { background: var(--accento); color: #fff; }
+.aiuto-modifica { font-size: 12px; color: var(--tenue); }
+.in-modifica .carr-scheda .corsia { box-shadow: 0 0 0 2px var(--accento-chiaro); }
+
+
+/* ============================================================ zoom sulle foto */
+.ingrandita img {
+  user-select: none; -webkit-user-drag: none; touch-action: none;
+  transform-origin: center center; will-change: transform;
+}
+.ingrandita.ingrandita-zoom img { cursor: grab; }
+.ingrandita.trascinando img { cursor: grabbing; }
+.ingrandita:not(.ingrandita-zoom) img { cursor: zoom-in; }
+.barra-zoom {
+  position: absolute; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 4px;
+  background: rgba(20,24,26,.78); border-radius: 10px; padding: 5px 6px; color: #fff;
+}
+.barra-zoom button {
+  font: inherit; font-size: 13px; color: #fff; background: transparent; border: none;
+  border-radius: 7px; padding: 7px 11px; cursor: pointer; min-width: 36px;
+}
+.barra-zoom button:hover { background: rgba(255,255,255,.18); }
+.barra-zoom .livello {
+  min-width: 56px; text-align: center; font-size: 12px; opacity: .85;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ============================================== foto aggiunte dal desktop */
+.aggiungi-foto-zona { flex-basis: 100%; margin-top: 4px; }
+.foto-lato.sx .aggiungi-foto-zona { text-align: right; }
+.aggiungi-foto {
+  font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 8px; cursor: pointer;
+  border: 1px dashed var(--accento); background: transparent; color: var(--accento);
+}
+.aggiungi-foto:hover { background: var(--accento-chiaro); }
+.pannello-foto {
+  text-align: left; border: 1px solid var(--linea); border-radius: 10px; padding: 11px 13px;
+  background: var(--carta); font-size: 12.5px; max-width: 300px; display: inline-block; width: 100%;
+}
+.titolo-pannello { font-weight: 600; }
+.riassunto-pannello { color: var(--tenue); font-size: 11.5px; margin: 2px 0 9px; }
+.campo-pannello { display: grid; grid-template-columns: 42px 1fr; gap: 3px 8px; align-items: center; margin-bottom: 7px; }
+.campo-pannello > span { color: var(--tenue); }
+.campo-pannello input { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--linea); border-radius: 6px; min-width: 0; }
+.campo-pannello small { grid-column: 2; color: var(--tenue); font-size: 10.5px; }
+.azioni-pannello { display: flex; gap: 8px; margin-top: 4px; }
+.carica-foto { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border-radius: 8px; border: none; background: var(--accento); color: #fff; cursor: pointer; }
+.carica-foto:disabled, .annulla-foto:disabled { opacity: .5; cursor: default; }
+.annulla-foto { font: inherit; font-size: 12.5px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--linea); background: transparent; cursor: pointer; }
+.esito-pannello { margin-top: 7px; font-size: 11.5px; color: var(--tenue); }
+.esito-pannello.errore { color: var(--allarme); }
