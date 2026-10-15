@@ -533,11 +533,11 @@ table.statistiche th .campione { vertical-align: -1px; }
 /* ============================================== foto aggiunte dal desktop */
 .aggiungi-foto-zona { flex-basis: 100%; margin-top: 4px; }
 .foto-lato.sx .aggiungi-foto-zona { text-align: right; }
-.aggiungi-foto {
+.aggiungi-foto-ufficio {
   font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 8px; cursor: pointer;
   border: 1px dashed var(--accento); background: transparent; color: var(--accento);
 }
-.aggiungi-foto:hover { background: var(--accento-chiaro); }
+.aggiungi-foto-ufficio:hover { background: var(--accento-chiaro); }
 .pannello-foto {
   text-align: left; border: 1px solid var(--linea); border-radius: 10px; padding: 11px 13px;
   background: var(--carta); font-size: 12.5px; max-width: 300px; display: inline-block; width: 100%;
@@ -554,3 +554,7 @@ table.statistiche th .campione { vertical-align: -1px; }
 .annulla-foto { font: inherit; font-size: 12.5px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--linea); background: transparent; cursor: pointer; }
 .esito-pannello { margin-top: 7px; font-size: 11.5px; color: var(--tenue); }
 .esito-pannello.errore { color: var(--allarme); }
+
+.barra-zoom .separa { width: 1px; height: 20px; background: rgba(255,255,255,.3); margin: 0 4px; }
+.barra-zoom button[hidden] { display: none; }
+.barra-zoom button:disabled { opacity: .5; }

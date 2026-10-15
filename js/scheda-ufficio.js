@@ -163,13 +163,22 @@ function dataBreve(s) {
   return new Date(s).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 }
 
+// Il nome con cui una foto si scarica: dice da solo dove e quando e' stata
+// fatta, cosi in una cartella di foto scaricate si riconoscono.
+function nomeFile(l, f) {
+  const n = (f.path.match(/-(\d+)\.jpg$/) || [])[1] || '1';
+  const pezzi = [l.strada, `km${String(l.km).replace('+', '-')}`, f.rilievo.carreggiata || 'carr-nd',
+    f.rilievo.data, n];
+  return pezzi.join('_').replace(/[^\w.-]+/g, '-') + '.jpg';
+}
+
 // Le foto di un lato, ognuna con sotto scritto di quale carreggiata e'.
-function gruppoFoto(elenco) {
+function gruppoFoto(elenco, l) {
   return elenco.map(f => {
     const carr = f.rilievo.carreggiata;
     const nome = carr ? `Linea ${carr}` : 'Carreggiata non indicata';
     return `<figure class="foto-scheda">
-      <img data-foto="${fuga(f.path)}" alt="${fuga(nome)} — ${data(f.rilievo.data)}" loading="lazy">
+      <img data-foto="${fuga(f.path)}" data-nome="${fuga(nomeFile(l, f))}" alt="${fuga(nome)} — ${data(f.rilievo.data)}" loading="lazy">
       <figcaption>${fuga(nome)} <span>· ${dataBreve(f.rilievo.data)}</span></figcaption>
     </figure>`;
   }).join('');
@@ -181,7 +190,7 @@ function pulsanteAggiungi(l, lato) {
   const g = l.carreggiate.find(x => (lato === 'sx') === (x.ordine === 0));
   if (!g) return '';
   return `<div class="aggiungi-foto-zona">
-    <button type="button" class="aggiungi-foto" data-linea="${fuga(l.id)}"
+    <button type="button" class="aggiungi-foto-ufficio" data-linea="${fuga(l.id)}"
             data-carr="${fuga(g.carreggiata)}">＋ Aggiungi foto · ${fuga(g.carreggiata)}</button>
   </div>`;
 }
@@ -209,7 +218,7 @@ function disegnaLinea(l, nomi) {
     </div>
 
     <div class="corpo-linea">
-      <div class="foto-lato sx">${gruppoFoto(gruppi.sx)}${pulsanteAggiungi(l, 'sx')}</div>
+      <div class="foto-lato sx">${gruppoFoto(gruppi.sx, l)}${pulsanteAggiungi(l, 'sx')}</div>
       <div class="schema-linea">
         ${nomi.map(col => {
     const g = l.carreggiate.find(x => x.carreggiata === col.nome);
@@ -222,10 +231,10 @@ function disegnaLinea(l, nomi) {
   }).join('')}
       </div>
 
-      <div class="foto-lato dx">${gruppoFoto(gruppi.dx)}${pulsanteAggiungi(l, 'dx')}</div>
+      <div class="foto-lato dx">${gruppoFoto(gruppi.dx, l)}${pulsanteAggiungi(l, 'dx')}</div>
     </div>
     ${gruppi.altre.length
-    ? `<div class="foto-lato altre">${gruppoFoto(gruppi.altre)}</div>` : ''}
+    ? `<div class="foto-lato altre">${gruppoFoto(gruppi.altre, l)}</div>` : ''}
 
     <div class="voci">
       ${disegnaVociCampo(suoi)}
@@ -387,7 +396,7 @@ function collegaEventi() {
     const img = e.target.closest('.foto-scheda img');
     if (img && img.src) return ingrandisci(img);
 
-    const aggiungi = e.target.closest('.aggiungi-foto');
+    const aggiungi = e.target.closest('.aggiungi-foto-ufficio');
     if (aggiungi) return scegliFoto(aggiungi);
   });
 
@@ -439,6 +448,9 @@ function ingrandisci(img) {
       <button type="button" data-zoom="piu" aria-label="Ingrandisci">+</button>
       <button type="button" data-zoom="adatta">Adatta</button>
       <button type="button" data-zoom="cento">100%</button>
+      <span class="separa"></span>
+      <button type="button" data-scarica="una">&#8681; Scarica</button>
+      <button type="button" data-scarica="tutte" hidden></button>
     </div>`;
   const foto = v.querySelector('img');
   const livello = v.querySelector('.livello');
@@ -489,6 +501,35 @@ function ingrandisci(img) {
   };
   const vai = passo => { i = (i + passo + tutte.length) % tutte.length; mostra(); };
 
+  // --- scaricare: la foto e' su un altro indirizzo (lo spazio di archiviazione),
+  // dove il browser ignora il nome proposto e aprirebbe la foto invece di
+  // salvarla. Si scarica il contenuto e lo si salva da qui, con un nome parlante.
+  const bScarica = v.querySelector('[data-scarica="una"]');
+  const bTutte = v.querySelector('[data-scarica="tutte"]');
+  if (tutte.length > 1) { bTutte.hidden = false; bTutte.textContent = `\u21A7 Tutte (${tutte.length})`; }
+  async function scarica(im, bottone) {
+    const prima = bottone.textContent;
+    bottone.disabled = true;
+    bottone.textContent = '…';
+    try {
+      const risposta = await fetch(im.src);
+      if (!risposta.ok) throw new Error(risposta.status);
+      const url = URL.createObjectURL(await risposta.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = im.dataset.nome || 'foto.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      alert('Non riesco a scaricare la foto: ' + (e.message || e));
+    } finally {
+      bottone.disabled = false;
+      bottone.textContent = prima;
+    }
+  }
+
   v.querySelector('.prec').addEventListener('click', e => { e.stopPropagation(); vai(-1); });
   v.querySelector('.succ').addEventListener('click', e => { e.stopPropagation(); vai(1); });
   v.querySelector('.chiudi-foto').addEventListener('click', e => { e.stopPropagation(); chiudiStrato(); });
@@ -498,6 +539,11 @@ function ingrandisci(img) {
     const b = e.target.closest('button');
     if (!b) return;
     e.stopPropagation();
+    if (b.dataset.scarica === 'una') return scarica(tutte[i], b);
+    if (b.dataset.scarica === 'tutte') {
+      (async () => { for (const im of tutte) { await scarica(im, b); await new Promise(r => setTimeout(r, 350)); } })();
+      return;
+    }
     if (b.dataset.zoom === 'piu') zoomA(sc * 1.5);
     else if (b.dataset.zoom === 'meno') zoomA(sc / 1.5);
     else if (b.dataset.zoom === 'adatta') azzera();
