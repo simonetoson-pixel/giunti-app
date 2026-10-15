@@ -12,10 +12,10 @@
 
 import { caricaFile, inserisci, scrivi, leggi } from './rete.js';
 
-// 2400 px sul lato lungo: abbastanza per leggere i dettagli di un giunto
-// ingrandendo, e una foto pesa meno di un megabyte.
-const LATO_MAX = 2400;
-const QUALITA = 0.84;
+// 1600 px sul lato lungo, come le foto scattate dal telefono: bastano a vedere
+// lo stato di un giunto e pesano poco.
+const LATO_MAX = 1600;
+const QUALITA = 0.82;
 
 // ------------------------------------------------------------------ la data
 // La data dello scatto sta nei metadati EXIF di una foto JPEG. Si legge dai

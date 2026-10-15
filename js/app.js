@@ -57,7 +57,7 @@ const mostra = id => {
 // Il numero della versione, scritto in fondo alla schermata: se non e' quello
 // atteso, il telefono sta ancora usando la copia vecchia. Alzarlo insieme a
 // CACHE in sw.js.
-const VERSIONE = 9;
+const VERSIONE = 10;
 
 // Quando arriva una versione nuova l'app si ricarica da sola, ma solo se non
 // si sta compilando un rilievo: in quel caso aspetta che si torni allo scatto,
@@ -393,10 +393,9 @@ function riempiCarreggiate() {
 }
 
 // ---------------------------------------------------------------- foto
-// Le foto si rimpiccioliscono prima di partire: in campo la rete è poca. 2400 px
-// sul lato lungo bastano a leggere i dettagli di un giunto ingrandendo, e una
-// foto pesa meno di un megabyte.
-function rimpicciolisci(file, latoMax = 2400, qualita = 0.84) {
+// Le foto si rimpiccioliscono prima di partire: in campo la rete è poca e
+// 1600 px bastano abbondantemente a vedere lo stato di un giunto.
+function rimpicciolisci(file, latoMax = 1600, qualita = 0.82) {
   return new Promise(ok => {
     const img = new Image();
     img.onload = () => {
