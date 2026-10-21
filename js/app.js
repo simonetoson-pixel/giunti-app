@@ -126,7 +126,7 @@ function avvisa(testo, tipo = '') {
 
 // ----------------------------------------------------------------- dati
 // Il censimento non sta nel sito ma nel database, e sul telefono resta in
-// memoria locale: così l'indirizzo pubblico non espone i dati di CAV e
+// memoria locale: così l'indirizzo pubblico non espone i dati dell'autostrada e
 // l'app funziona lo stesso dove non c'è campo.
 async function caricaLinee() {
   linee = await censimento({

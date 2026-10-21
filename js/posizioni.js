@@ -1,7 +1,7 @@
 // Rimettere i giunti al loro posto sull'ortofoto.
 //
-// Le coordinate del censimento nascono interpolando la chilometrica sul grafo
-// CAV, che è una linea sola: cadono sull'asse della strada, non sulla
+// Le coordinate del censimento nascono interpolando la chilometrica sul grafo,
+// che è una linea sola: cadono sull'asse della strada, non sulla
 // carreggiata. Qui si trascina il punto dove il giunto sta davvero, e la
 // correzione viene salvata a parte — così un ricaricamento del censimento non
 // la porta via.
