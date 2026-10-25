@@ -57,7 +57,7 @@ const mostra = id => {
 // Il numero della versione, scritto in fondo alla schermata: se non e' quello
 // atteso, il telefono sta ancora usando la copia vecchia. Alzarlo insieme a
 // CACHE in sw.js.
-const VERSIONE = 10;
+const VERSIONE = 11;
 
 // Quando arriva una versione nuova l'app si ricarica da sola, ma solo se non
 // si sta compilando un rilievo: in quel caso aspetta che si torni allo scatto,
@@ -103,9 +103,24 @@ let carreggiataScelta = sceltaValida() && localStorage.getItem(CARREGGIATA + '-s
 // quasi sempre vuol dire che la tratta scelta e' rimasta quella di ieri.
 let altraTratta = null;
 let carreggiateInDisaccordo = false;
+// Quante letture di fila dicono che si sta andando nel verso dell'altra
+// carreggiata rispetto a quella scelta a mano.
+let letturePerAltroVerso = 0;
+const LETTURE_PER_CAMBIARE = 3;
 
 function candidate() {
   return tratta ? linee.filter(l => l.strada === tratta) : linee;
+}
+
+// I nomi delle carreggiate della strada in cui si e'. Senza una tratta scelta
+// l'elenco generale mescola A4 (est/ovest) e A31 (nord/sud): dalla direzione di
+// marcia si finirebbe a dedurre "EST" su una strada che non ce l'ha.
+function nomiDellaStrada() {
+  const strada = proposta ? proposta.linea.strada : tratta;
+  if (!strada) return [];
+  const nomi = new Set();
+  linee.filter(l => l.strada === strada).forEach(l => l.carreggiate.forEach(c => nomi.add(c.nome)));
+  return [...nomi].sort();
 }
 
 function carreggiateDisponibili() {
@@ -253,6 +268,7 @@ function seguiPosizione() {
       if (p.coords.heading != null && p.coords.speed != null && p.coords.speed > 4) {
         rotta = p.coords.heading;
         rottaQuando = Date.now();
+        controllaVerso();
       }
       aggiornaPosizione();
     },
@@ -265,6 +281,24 @@ function seguiPosizione() {
         : 'GPS assente — scegli la linea a mano';
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+
+// La carreggiata scelta a mano non si tocca, ma non puo' restare bloccata
+// quando si inverte il senso di marcia: si esce in A31 sud, si gira, e si e'
+// in A31 nord. Se per piu' letture di fila, in movimento, il verso e' quello
+// dell'altra carreggiata, la scelta a mano decade e torna quella automatica.
+function controllaVerso() {
+  if (!carreggiataScelta || !carreggiata) { letturePerAltroVerso = 0; return; }
+  const verso = carreggiataDallaRotta(rotta, nomiDellaStrada());
+  if (verso && verso !== carreggiata) letturePerAltroVerso++;
+  else letturePerAltroVerso = 0;
+  if (letturePerAltroVerso < LETTURE_PER_CAMBIARE) return;
+  letturePerAltroVerso = 0;
+  carreggiataScelta = false;
+  try { localStorage.setItem(CARREGGIATA + '-scelta', ''); } catch { /* pazienza */ }
+  const sel = $('scelta-carreggiata');
+  if (sel) sel.classList.add('proposta');
+  avvisa(`Stai andando in direzione ${verso}: carreggiata cambiata`, 'buono');
 }
 
 function aggiornaPosizione() {
@@ -362,7 +396,7 @@ function passaAllaTratta() {
 function proponiCarreggiata() {
   if (carreggiataScelta) return;
 
-  const nomi = carreggiateDisponibili();
+  const nomi = nomiDellaStrada();
   const daPosizione = proposta && posizione
     ? carreggiataDallaPosizione(proposta.linea, posizione.lat, posizione.lon,
       posizione.precisione)
